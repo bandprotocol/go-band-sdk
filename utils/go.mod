@@ -1,4 +1,4 @@
-module github.com/bandprotocol/band-sdk/utils
+module github.com/bandprotocol/go-band-sdk/utils
 
 go 1.20
 

@@ -1,6 +1,6 @@
 package sender
 
-import "github.com/bandprotocol/band-sdk/requester/types"
+import "github.com/bandprotocol/go-band-sdk/requester/types"
 
 type RetrySender struct {
 	types.RetryHandler

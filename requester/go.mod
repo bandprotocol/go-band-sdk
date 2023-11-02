@@ -1,10 +1,10 @@
-module github.com/bandprotocol/band-sdk/requester
+module github.com/bandprotocol/go-band-sdk/requester
 
 go 1.20
 
 require (
-	github.com/bandprotocol/band-sdk/utils v0.0.0
 	github.com/bandprotocol/chain/v2 v2.5.4
+	github.com/bandprotocol/go-band-sdk/utils v0.0.0
 	github.com/cosmos/cosmos-sdk v0.45.16
 	github.com/stretchr/testify v1.8.4
 	github.com/tendermint/tendermint v0.34.29
@@ -141,7 +141,7 @@ require (
 )
 
 replace (
-	github.com/bandprotocol/band-sdk/utils => ../utils
+	github.com/bandprotocol/go-band-sdk/utils => ../utils
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	// use cometbft
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.29

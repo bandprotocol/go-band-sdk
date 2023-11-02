@@ -3,8 +3,8 @@ package client
 import (
 	"fmt"
 
-	"github.com/bandprotocol/band-sdk/utils"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
+	"github.com/bandprotocol/go-band-sdk/utils"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"

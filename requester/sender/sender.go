@@ -7,9 +7,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
-	"github.com/bandprotocol/band-sdk/requester/client"
-	"github.com/bandprotocol/band-sdk/requester/types"
-	"github.com/bandprotocol/band-sdk/utils"
+	"github.com/bandprotocol/go-band-sdk/requester/client"
+	"github.com/bandprotocol/go-band-sdk/requester/types"
+	"github.com/bandprotocol/go-band-sdk/utils"
 )
 
 type Sender struct {
