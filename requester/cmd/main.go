@@ -36,11 +36,10 @@ func main() {
 		"0.0025uband",
 		kb,
 	)
-	fmt.Println("DDD")
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(info.GetAddress().String())
+
 	s := sender.NewSender(
 		client,
 		logger,
@@ -51,7 +50,6 @@ func main() {
 		utils.MustParseDuration("1s"),
 		utils.MustParseDuration("1m"),
 	)
-	fmt.Println("Sender done")
 	go s.Start()
 
 	cd, _ := hex.DecodeString(
@@ -65,5 +63,4 @@ func main() {
 	case fail := <-failedRequests:
 		fmt.Println("F", fail)
 	}
-
 }
