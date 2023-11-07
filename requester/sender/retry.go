@@ -36,7 +36,7 @@ type InsufficientPrepareGasRetryMiddleware struct {
 }
 
 func (i InsufficientPrepareGasRetryMiddleware) Call(request *types.FailedRequest) bool {
-	if request.Error.Code == 2 {
+	if request.Error == types.ErrOutOfPrepareGas {
 		request.Request.Msg.PrepareGas = uint64(float64(request.Request.Msg.PrepareGas) * i.GasMultiplier)
 	}
 	return true
