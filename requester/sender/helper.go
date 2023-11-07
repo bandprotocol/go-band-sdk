@@ -9,6 +9,8 @@ import (
 	txtypes "github.com/cosmos/cosmos-sdk/types/tx"
 )
 
+// TODO: NOT USED IN THIS PACKAGE YET, MOVE TO SUBSEQUENT USER
+
 // GetRequestID returns the first request id from event of transaction
 func GetRequestID(events []sdk.StringEvent) (uint64, error) {
 	for _, event := range events {

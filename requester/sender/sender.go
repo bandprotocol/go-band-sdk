@@ -1,168 +1,163 @@
 package sender
 
 import (
-	"time"
+	"errors"
+	"strings"
 
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
+	owasm "github.com/bandprotocol/go-owasm/api"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
 	"github.com/bandprotocol/go-band-sdk/requester/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
-	"github.com/bandprotocol/go-band-sdk/utils"
+	"github.com/bandprotocol/go-band-sdk/utils/logger"
 )
 
 type Sender struct {
-	client client.Client
-	logger utils.Logger
+	client client.Clienter
+	logger logger.Logger
 
-	GasPrices        string
-	MaxTry           uint64
-	RpcPollInterval  time.Duration
-	BroadcastTimeout time.Duration
+	retryMiddlewares []RetryMiddleware
 
-	FreeKeys chan keyring.Info
+	freeKeys chan keyring.Info
 
 	// Channel
-	Requestc        <-chan types.Request
-	SuccessRequestc chan<- types.Response
-	FailedRequestc  chan<- types.FailedRequest
+	requestQueueCh       chan types.Request
+	successfulRequestsCh chan<- types.Response
+	failedRequestCh      chan<- types.FailedRequest
 }
 
 func NewSender(
 	client client.Client,
-	logger utils.Logger,
-	in <-chan types.Request,
-	out chan<- types.Response,
-	failed chan<- types.FailedRequest,
-	infos []keyring.Info,
-	pollInterval time.Duration,
-	broadcastTimeout time.Duration,
-) *Sender {
-	infoc := make(chan keyring.Info, len(infos))
+	logger logger.Logger,
+	gasPrice string,
+	RequestQueueCh chan types.Request,
+	kr keyring.Keyring,
+) (*Sender, error) {
+	infos, err := kr.List()
+	if err != nil {
+		return nil, err
+	}
 
+	freeKeys := make(chan keyring.Info, len(infos))
 	for _, info := range infos {
-		infoc <- info
+		freeKeys <- info
 	}
+
 	return &Sender{
-		client:           client,
-		logger:           logger,
-		Requestc:         in,
-		SuccessRequestc:  out,
-		FailedRequestc:   failed,
-		FreeKeys:         infoc,
-		RpcPollInterval:  pollInterval,
-		BroadcastTimeout: broadcastTimeout,
-	}
+		client:               client,
+		logger:               logger,
+		retryMiddlewares:     make([]RetryMiddleware, 0),
+		freeKeys:             freeKeys,
+		requestQueueCh:       RequestQueueCh,
+		successfulRequestsCh: make(chan<- types.Response),
+		failedRequestCh:      make(chan<- types.FailedRequest),
+	}, nil
+}
+
+func (s *Sender) WithRetryMiddleware(middlewares []RetryMiddleware) {
+	s.retryMiddlewares = middlewares
+}
+
+func (s *Sender) SuccessRequestsCh() chan<- types.Response {
+	return s.successfulRequestsCh
+}
+
+func (s *Sender) FailedRequestsCh() chan<- types.FailedRequest {
+	return s.failedRequestCh
 }
 
 func (s *Sender) Start() {
 	for {
-		req := <-s.Requestc
-		key := <-s.FreeKeys
+		req := <-s.requestQueueCh
+		key := <-s.freeKeys
 		go s.handleRequest(req, key)
 	}
 }
 
 func (s *Sender) handleRequest(req types.Request, key keyring.Info) {
+	var fr types.FailedRequest
+	var retry = true
+
 	defer func() {
-		s.FreeKeys <- key
+		s.freeKeys <- key
 	}()
 
-	// Mutate msg request to current sender should be ok for this use case
+	defer func() {
+		if retry {
+			s.executeRetryMiddleware(&fr)
+		}
+	}()
+
+	// Mutate the msg sender to the actual sender
 	req.Msg.Sender = key.GetAddress().String()
 
+	// Attempt to send the request
 	res, err := s.client.SendRequest(req.Msg, key)
 	if err != nil {
-		// TODO: Fail request event
-		s.FailedRequestc <- types.NewFailedRequest(req, types.ErrBroadcast.Wrapf("with error %s", err))
+		fr = errorIntoFailedRequest(req, err)
+		return
 	}
 
 	// Check tx response from sync broadcast
 	if res.Code != 0 {
-		switch res.Codespace {
-		case sdkerrors.RootCodespace:
-			switch res.Code {
-			case sdkerrors.ErrInsufficientFee.ABCICode():
-				s.FailedRequestc <- types.NewFailedRequest(req, types.ErrInsufficientFunds)
-			default:
-				s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-			}
-		case oracletypes.ModuleName:
-			switch res.Code {
-			default:
-				s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-			}
-		default:
-			s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-		}
+		fr = responseIntoError(req, *res)
 		return
 	}
 
-	txHash := res.TxHash
+	retry = false
+	s.successfulRequestsCh <- types.Response{TxHash: res.TxHash}
+}
 
-	start := time.Now()
-	for time.Since(start) < s.BroadcastTimeout {
-		time.Sleep(s.RpcPollInterval)
-
-		res, err := s.client.GetTx(txHash)
-		if err != nil {
-			s.logger.Debug("Failed to query tx with error", err.Error())
-			continue
-		}
-
-		// TODO: Extract info for event
-		_, _, _, err = decodeTxFromRes(res)
-		if err != nil {
-			// It's not expected behavior
-			s.logger.Critical("Cannot decode tx", "Cannot decode Tx")
+func (s *Sender) executeRetryMiddleware(fr *types.FailedRequest) {
+	for _, mw := range s.retryMiddlewares {
+		next := mw.Call(fr)
+		if !next {
+			s.failedRequestCh <- *fr
 			return
 		}
-
-		if res.Code != 0 {
-			switch res.Codespace {
-			case sdkerrors.RootCodespace:
-				switch res.Code {
-				case sdkerrors.ErrInsufficientFee.ABCICode():
-					s.FailedRequestc <- types.NewFailedRequest(req, types.ErrInsufficientFunds)
-				default:
-					s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-				}
-			case oracletypes.ModuleName:
-				switch res.Code {
-				default:
-					s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-				}
-			default:
-				s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-			}
-			return
-		}
-
-		rid, err := GetRequestID(res.Logs[0].Events)
-		if err != nil {
-			s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-			return
-		}
-
-		// dsFee, err := GetDsFee(res.Logs[0].Events)
-		// if err != nil {
-		// 	errDetail := fmt.Sprintf("Failed to parse DS fees on %s: %s", res.TxHash, err.Error())
-		// 	s.incidentService.TriggerIncident(common.ParseDSFeesFailed.With(errDetail))
-		// 	return
-		// }
-
-		// TODO: Add event request successful
-		s.logger.Info(
-			"Tx send successful",
-			"Tx Hash %s with request ID %d (Client ID: %s).",
-			txHash,
-			rid,
-			req.Msg.ClientID,
-		)
-
-		s.SuccessRequestc <- types.Response{Id: req.Id, TxHash: txHash, RequestId: rid}
 	}
+	s.requestQueueCh <- fr.Request
+}
 
-	s.FailedRequestc <- types.NewFailedRequest(req, types.ErrTxNotConfirm)
+func errorIntoFailedRequest(req types.Request, err error) types.FailedRequest {
+	// TODO: Log error
+	var failedRequest types.FailedRequest
+	switch {
+	case errors.Is(err, oracletypes.ErrBadWasmExecution):
+		// Out of prepare gas
+		if strings.Contains(err.Error(), owasm.ErrOutOfGas.Error()) {
+			failedRequest = types.NewFailedRequest(req, types.ErrOutOfPrepareGas)
+		}
+	default:
+		failedRequest = types.NewFailedRequest(req, types.ErrUnexpected.Wrapf("with error %s", err))
+	}
+	return failedRequest
+}
+
+func responseIntoError(req types.Request, res sdk.TxResponse) types.FailedRequest {
+	// TODO: Log error
+	var failedRequest types.FailedRequest
+	switch res.Codespace {
+	case sdkerrors.RootCodespace:
+		// Handle root errors
+		switch res.Code {
+		case sdkerrors.ErrInsufficientFee.ABCICode():
+			// Balance not sufficient to execute transaction
+			failedRequest = types.NewFailedRequest(req, types.ErrInsufficientFunds)
+		default:
+			failedRequest = types.NewFailedRequest(req, types.ErrUnexpected)
+		}
+	case oracletypes.ModuleName:
+		// Handle oracle errors
+		switch res.Code {
+		default:
+			failedRequest = types.NewFailedRequest(req, types.ErrUnexpected)
+		}
+	default:
+		failedRequest = types.NewFailedRequest(req, types.ErrUnexpected)
+	}
+	return failedRequest
 }
