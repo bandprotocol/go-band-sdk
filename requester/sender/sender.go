@@ -16,7 +16,7 @@ import (
 )
 
 type Sender struct {
-	client client.Clienter
+	client client.Client
 	logger logger.Logger
 
 	retryMiddlewares []RetryMiddleware
@@ -25,8 +25,8 @@ type Sender struct {
 
 	// Channel
 	requestQueueCh       chan types.Request
-	successfulRequestsCh chan<- types.Response
-	failedRequestCh      chan<- types.FailedRequest
+	successfulRequestsCh chan types.Response
+	failedRequestCh      chan types.FailedRequest
 }
 
 func NewSender(
@@ -51,8 +51,8 @@ func NewSender(
 		retryMiddlewares:     make([]RetryMiddleware, 0),
 		freeKeys:             freeKeys,
 		requestQueueCh:       RequestQueueCh,
-		successfulRequestsCh: make(chan<- types.Response),
-		failedRequestCh:      make(chan<- types.FailedRequest),
+		successfulRequestsCh: make(chan types.Response),
+		failedRequestCh:      make(chan types.FailedRequest),
 	}, nil
 }
 
@@ -60,11 +60,11 @@ func (s *Sender) WithRetryMiddleware(middlewares []RetryMiddleware) {
 	s.retryMiddlewares = middlewares
 }
 
-func (s *Sender) SuccessRequestsCh() chan<- types.Response {
+func (s *Sender) SuccessRequestsCh() <-chan types.Response {
 	return s.successfulRequestsCh
 }
 
-func (s *Sender) FailedRequestsCh() chan<- types.FailedRequest {
+func (s *Sender) FailedRequestsCh() <-chan types.FailedRequest {
 	return s.failedRequestCh
 }
 

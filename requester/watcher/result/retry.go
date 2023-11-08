@@ -9,13 +9,13 @@ type RetryResult struct {
 func (r *RetryResult) Run() {
 	for {
 		fail := <-r.FailedRequestc
-		attempt := r.SeenRequest[fail.Id]
+		attempt := r.SeenRequest[fail.ID]
 		if attempt < r.MaxTry {
-			r.SeenRequest[fail.Id] = attempt + 1
+			r.SeenRequest[fail.ID] = attempt + 1
 			// TODO: Process retry logic
 			r.Requestc <- fail.Request
 		} else {
-			r.Abortc <- fail.Id
+			r.Abortc <- fail.ID
 		}
 	}
 }

@@ -4,12 +4,13 @@ import (
 	"fmt"
 
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
-	"github.com/bandprotocol/go-band-sdk/utils"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
+
+	"github.com/bandprotocol/go-band-sdk/utils/logger"
 )
 
 type Client interface {
@@ -36,11 +37,11 @@ type MultipleClient struct {
 	Nodes     []*rpchttp.HTTP
 	Keyring   keyring.Keyring
 
-	logger utils.Logger
+	logger logger.Logger
 }
 
 func NewMultipleClient(
-	logger utils.Logger,
+	logger logger.Logger,
 	endpoints []string,
 	chainId string,
 	timeout string,
@@ -65,7 +66,7 @@ func NewMultipleClient(
 	}, nil
 }
 
-// find max account sequence from multiple clients
+// GetAccount find max account sequence from multiple clients
 func (c MultipleClient) GetAccount(account sdk.AccAddress) (client.Account, error) {
 	var maxSeqAcc client.Account
 
@@ -276,6 +277,6 @@ Gas:
 		case <-errorc:
 		}
 	}
-	// If cannot broadcast to all nodes return error
+	// If the tx cannot broadcast to all nodes, return an error
 	return nil, fmt.Errorf("failed to find transaction from all endpoints")
 }
