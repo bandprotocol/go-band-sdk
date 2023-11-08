@@ -5,7 +5,7 @@ import (
 )
 
 // type Task struct {
-// 	Id     int64 // Auto increment
+// 	ID     int64 // Auto increment
 // 	UserId int64 // ID for track request from user
 
 // 	// BandChain spec
@@ -23,20 +23,20 @@ import (
 // }
 
 type Request struct {
-	Id uint64 // ID to identify request with response later
+	ID uint64 // ID to identify request with response later
 
 	Msg *oracletypes.MsgRequestData
 }
 
 type Response struct {
-	Id uint64 // ID to identify response with original request
+	ID uint64 // ID to identify response with original request
 
 	TxHash    string
-	RequestId uint64
+	RequestID uint64
 
 	ResolveStatus uint8
 	Result        []byte
-	SignatureId   uint64
+	SignatureID   uint64
 
 	// TODO
 	Signature []byte
