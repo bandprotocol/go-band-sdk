@@ -5,7 +5,9 @@ go 1.20
 require (
 	github.com/bandprotocol/chain/v2 v2.5.4
 	github.com/bandprotocol/go-band-sdk/utils v0.0.0
+	github.com/bandprotocol/go-owasm v0.2.3
 	github.com/cosmos/cosmos-sdk v0.45.16
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/stretchr/testify v1.8.4
 	github.com/tendermint/tendermint v0.34.29
 )
@@ -21,7 +23,6 @@ require (
 	github.com/DataDog/zstd v1.5.0 // indirect
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
-	github.com/bandprotocol/go-owasm v0.2.3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.1-0.20220910012023-760eaf8b6816 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
