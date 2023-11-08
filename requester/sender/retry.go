@@ -3,6 +3,8 @@ package sender
 import (
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
+
 	"github.com/bandprotocol/go-band-sdk/requester/types"
 )
 
@@ -18,13 +20,23 @@ type RetryMiddleware interface {
 
 type MaxRetryMiddleware struct {
 	MaxTry uint64
-	seen   map[uint64]uint64
+	cache  *lru.TwoQueueCache[uint64, uint64]
+}
+
+func NewRetryMiddleware(maxTry uint64, cacheSize uint64) *MaxRetryMiddleware {
+	c, _ := lru.New2Q[uint64, uint64](int(cacheSize))
+	return &MaxRetryMiddleware{MaxTry: maxTry, cache: c}
 }
 
 func (r *MaxRetryMiddleware) Call(request *types.FailedRequest) bool {
-	attempt := r.seen[request.Id]
+	attempt, ok := r.cache.Peek(request.ID)
+	if !ok {
+		r.cache.Add(request.ID, 1)
+		return true
+	}
+
 	if attempt < r.MaxTry {
-		r.seen[request.Id] = attempt + 1
+		r.cache.Add(request.ID, attempt+1)
 		return true
 	} else {
 		return false
