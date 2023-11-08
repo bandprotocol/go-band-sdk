@@ -32,7 +32,6 @@ type Sender struct {
 func NewSender(
 	client client.Client,
 	logger logger.Logger,
-	gasPrice string,
 	RequestQueueCh chan types.Request,
 	kr keyring.Keyring,
 ) (*Sender, error) {
@@ -73,11 +72,11 @@ func (s *Sender) Start() {
 	for {
 		req := <-s.requestQueueCh
 		key := <-s.freeKeys
-		go s.handleRequest(req, key)
+		go s.request(req, key)
 	}
 }
 
-func (s *Sender) handleRequest(req types.Request, key keyring.Info) {
+func (s *Sender) request(req types.Request, key keyring.Info) {
 	var fr types.FailedRequest
 	var retry = true
 
@@ -97,13 +96,13 @@ func (s *Sender) handleRequest(req types.Request, key keyring.Info) {
 	// Attempt to send the request
 	res, err := s.client.SendRequest(req.Msg, key)
 	if err != nil {
-		fr = errorIntoFailedRequest(req, err)
+		fr = parseCheckTxErrorIntoFailedRequest(req, err)
 		return
 	}
 
 	// Check tx response from sync broadcast
 	if res.Code != 0 {
-		fr = responseIntoError(req, *res)
+		fr = parseCheckTxResponseErrorIntoFailedRequest(req, *res)
 		return
 	}
 
@@ -122,7 +121,7 @@ func (s *Sender) executeRetryMiddleware(fr *types.FailedRequest) {
 	s.requestQueueCh <- fr.Request
 }
 
-func errorIntoFailedRequest(req types.Request, err error) types.FailedRequest {
+func parseCheckTxErrorIntoFailedRequest(req types.Request, err error) types.FailedRequest {
 	// TODO: Log error
 	var failedRequest types.FailedRequest
 	switch {
@@ -137,7 +136,7 @@ func errorIntoFailedRequest(req types.Request, err error) types.FailedRequest {
 	return failedRequest
 }
 
-func responseIntoError(req types.Request, res sdk.TxResponse) types.FailedRequest {
+func parseCheckTxResponseErrorIntoFailedRequest(req types.Request, res sdk.TxResponse) types.FailedRequest {
 	// TODO: Log error
 	var failedRequest types.FailedRequest
 	switch res.Codespace {
