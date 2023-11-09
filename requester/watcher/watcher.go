@@ -24,7 +24,7 @@ type Watcher struct {
 	pollingDelay time.Duration
 	timeout      time.Duration
 
-	retryMiddlewares []middleware.RetryMiddleware
+	retryMiddlewares []middleware.Retry
 
 	// Channel
 	watchQueueCh        chan types.RequestResult
@@ -34,11 +34,11 @@ type Watcher struct {
 
 func New() *Watcher {
 	return &Watcher{
-		retryMiddlewares: make([]middleware.RetryMiddleware, 0),
+		retryMiddlewares: make([]middleware.Retry, 0),
 	}
 }
 
-func (w *Watcher) WithRetryMiddleware(middlewares []middleware.RetryMiddleware) {
+func (w *Watcher) WithRetryMiddleware(middlewares []middleware.Retry) {
 	w.retryMiddlewares = middlewares
 }
 
@@ -65,7 +65,7 @@ func (w *Watcher) watch(reqResult types.RequestResult) {
 	defer func() {
 		fr.RequestResult = r
 		if retry {
-			w.executeRetryMiddleware(&fr)
+			w.executeRetryMiddleware(fr)
 		}
 	}()
 
@@ -108,11 +108,11 @@ func (w *Watcher) watch(reqResult types.RequestResult) {
 	fr.Error = types.ErrUnconfirmedTx
 }
 
-func (w *Watcher) executeRetryMiddleware(fr *types.FailedRequest) {
+func (w *Watcher) executeRetryMiddleware(fr types.FailedRequest) {
 	for _, mw := range w.retryMiddlewares {
-		next := mw.Call(fr, w.logger)
+		fr, next := mw.Call(fr)
 		if !next {
-			w.failedRequestCh <- *fr
+			w.failedRequestCh <- fr
 			return
 		}
 	}

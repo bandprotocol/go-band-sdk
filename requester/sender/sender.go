@@ -13,7 +13,7 @@ type Sender struct {
 	client client.Clienter
 	logger logger.Logger
 
-	retryMiddlewares []middleware.RetryMiddleware
+	retryMiddlewares []middleware.Retry
 
 	freeKeys chan keyring.Info
 
@@ -42,7 +42,7 @@ func NewSender(
 	return &Sender{
 		client:               client,
 		logger:               logger,
-		retryMiddlewares:     make([]middleware.RetryMiddleware, 0),
+		retryMiddlewares:     make([]middleware.Retry, 0),
 		freeKeys:             freeKeys,
 		requestQueueCh:       RequestQueueCh,
 		successfulRequestsCh: make(chan types.RequestResult),
@@ -50,7 +50,7 @@ func NewSender(
 	}, nil
 }
 
-func (s *Sender) WithRetryMiddleware(middlewares []middleware.RetryMiddleware) {
+func (s *Sender) WithRetryMiddleware(middlewares []middleware.Retry) {
 	s.retryMiddlewares = middlewares
 }
 
@@ -82,7 +82,7 @@ func (s *Sender) request(req types.Request, key keyring.Info) {
 	defer func() {
 		fr.RequestResult = r
 		if retry {
-			s.executeRetryMiddleware(&fr)
+			s.executeRetryMiddleware(fr)
 		}
 	}()
 
@@ -101,11 +101,11 @@ func (s *Sender) request(req types.Request, key keyring.Info) {
 	s.successfulRequestsCh <- types.RequestResult{TxResponse: *res}
 }
 
-func (s *Sender) executeRetryMiddleware(fr *types.FailedRequest) {
+func (s *Sender) executeRetryMiddleware(fr types.FailedRequest) {
 	for _, mw := range s.retryMiddlewares {
-		next := mw.Call(fr, s.logger)
+		fr, next := mw.Call(fr)
 		if !next {
-			s.failedRequestCh <- *fr
+			s.failedRequestCh <- fr
 			return
 		}
 	}
