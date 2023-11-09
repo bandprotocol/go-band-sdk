@@ -2,6 +2,7 @@ package types
 
 import (
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 // type Task struct {
@@ -28,28 +29,18 @@ type Request struct {
 	Msg *oracletypes.MsgRequestData
 }
 
-type Response struct {
-	ID uint64 // ID to identify response with original request
+type RequestResult struct {
+	Request
 
-	TxHash    string
-	RequestID uint64
-
-	ResolveStatus uint8
-	Result        []byte
-	SignatureID   uint64
-
-	// TODO
-	Signature []byte
+	TxResponse   sdk.TxResponse
+	OracleResult oracletypes.Result
+	//// TODO
+	Signature interface{}
 }
 
 type FailedRequest struct {
-	Request
-
-	Error Error
-}
-
-func NewFailedRequest(req Request, err Error) FailedRequest {
-	return FailedRequest{Request: req, Error: err}
+	RequestResult
+	Error error
 }
 
 // type EventHandler interface {

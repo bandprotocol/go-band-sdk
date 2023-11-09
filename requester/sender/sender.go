@@ -1,36 +1,30 @@
 package sender
 
 import (
-	"errors"
-	"strings"
-
-	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
-	owasm "github.com/bandprotocol/go-owasm/api"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
-	"github.com/bandprotocol/go-band-sdk/requester/client"
+	"github.com/bandprotocol/go-band-sdk/client"
+	"github.com/bandprotocol/go-band-sdk/requester/middleware"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
 	"github.com/bandprotocol/go-band-sdk/utils/logger"
 )
 
 type Sender struct {
-	client client.Client
+	client client.Clienter
 	logger logger.Logger
 
-	retryMiddlewares []RetryMiddleware
+	retryMiddlewares []middleware.RetryMiddleware
 
 	freeKeys chan keyring.Info
 
 	// Channel
 	requestQueueCh       chan types.Request
-	successfulRequestsCh chan types.Response
+	successfulRequestsCh chan types.RequestResult
 	failedRequestCh      chan types.FailedRequest
 }
 
 func NewSender(
-	client client.Client,
+	client client.Clienter,
 	logger logger.Logger,
 	RequestQueueCh chan types.Request,
 	kr keyring.Keyring,
@@ -48,19 +42,19 @@ func NewSender(
 	return &Sender{
 		client:               client,
 		logger:               logger,
-		retryMiddlewares:     make([]RetryMiddleware, 0),
+		retryMiddlewares:     make([]middleware.RetryMiddleware, 0),
 		freeKeys:             freeKeys,
 		requestQueueCh:       RequestQueueCh,
-		successfulRequestsCh: make(chan types.Response),
+		successfulRequestsCh: make(chan types.RequestResult),
 		failedRequestCh:      make(chan types.FailedRequest),
 	}, nil
 }
 
-func (s *Sender) WithRetryMiddleware(middlewares []RetryMiddleware) {
+func (s *Sender) WithRetryMiddleware(middlewares []middleware.RetryMiddleware) {
 	s.retryMiddlewares = middlewares
 }
 
-func (s *Sender) SuccessRequestsCh() <-chan types.Response {
+func (s *Sender) SuccessRequestsCh() <-chan types.RequestResult {
 	return s.successfulRequestsCh
 }
 
@@ -78,6 +72,7 @@ func (s *Sender) Start() {
 
 func (s *Sender) request(req types.Request, key keyring.Info) {
 	var fr types.FailedRequest
+	var r types.RequestResult
 	var retry = true
 
 	defer func() {
@@ -85,6 +80,7 @@ func (s *Sender) request(req types.Request, key keyring.Info) {
 	}()
 
 	defer func() {
+		fr.RequestResult = r
 		if retry {
 			s.executeRetryMiddleware(&fr)
 		}
@@ -95,68 +91,23 @@ func (s *Sender) request(req types.Request, key keyring.Info) {
 
 	// Attempt to send the request
 	res, err := s.client.SendRequest(req.Msg, key)
-	if err != nil {
-		fr = parseCheckTxErrorIntoFailedRequest(req, err)
-		return
-	}
-
-	// Check tx response from sync broadcast
-	if res.Code != 0 {
-		fr = parseCheckTxResponseErrorIntoFailedRequest(req, *res)
+	r.TxResponse = *res
+	if res.Code != 0 || err != nil {
+		fr.Error = err
 		return
 	}
 
 	retry = false
-	s.successfulRequestsCh <- types.Response{TxHash: res.TxHash}
+	s.successfulRequestsCh <- types.RequestResult{TxResponse: *res}
 }
 
 func (s *Sender) executeRetryMiddleware(fr *types.FailedRequest) {
 	for _, mw := range s.retryMiddlewares {
-		next := mw.Call(fr)
+		next := mw.Call(fr, s.logger)
 		if !next {
 			s.failedRequestCh <- *fr
 			return
 		}
 	}
 	s.requestQueueCh <- fr.Request
-}
-
-func parseCheckTxErrorIntoFailedRequest(req types.Request, err error) types.FailedRequest {
-	// TODO: Log error
-	var failedRequest types.FailedRequest
-	switch {
-	case errors.Is(err, oracletypes.ErrBadWasmExecution):
-		// Out of prepare gas
-		if strings.Contains(err.Error(), owasm.ErrOutOfGas.Error()) {
-			failedRequest = types.NewFailedRequest(req, types.ErrOutOfPrepareGas)
-		}
-	default:
-		failedRequest = types.NewFailedRequest(req, types.ErrUnexpected.Wrapf("with error %s", err))
-	}
-	return failedRequest
-}
-
-func parseCheckTxResponseErrorIntoFailedRequest(req types.Request, res sdk.TxResponse) types.FailedRequest {
-	// TODO: Log error
-	var failedRequest types.FailedRequest
-	switch res.Codespace {
-	case sdkerrors.RootCodespace:
-		// Handle root errors
-		switch res.Code {
-		case sdkerrors.ErrInsufficientFee.ABCICode():
-			// Balance not sufficient to execute transaction
-			failedRequest = types.NewFailedRequest(req, types.ErrInsufficientFunds)
-		default:
-			failedRequest = types.NewFailedRequest(req, types.ErrUnexpected)
-		}
-	case oracletypes.ModuleName:
-		// Handle oracle errors
-		switch res.Code {
-		default:
-			failedRequest = types.NewFailedRequest(req, types.ErrUnexpected)
-		}
-	default:
-		failedRequest = types.NewFailedRequest(req, types.ErrUnexpected)
-	}
-	return failedRequest
 }

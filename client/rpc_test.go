@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Rewrite test to be the real test
+// TODO: Rewrite test into real test
 func TestEstimateGas(t *testing.T) {
 	appConfig := sdk.GetConfig()
 	band.SetBech32AddressPrefixesAndBip44CoinTypeAndSeal(appConfig)
@@ -34,10 +34,11 @@ func TestEstimateGas(t *testing.T) {
 	cd, _ := hex.DecodeString(
 		"0000000e00000004414c435800000005435245414d0000000343524f00000004435553440000000446524158000000054845474943000000034a4f45000000034d494d000000045045525000000003534649000000045354524b00000004535553440000000454555344000000045742544301",
 	)
-	gas, err := estimateGas(ctx, txf, oracletypes.NewMsgRequestData(
-		401, cd, 16, 10, "test", sdk.NewCoins(sdk.NewInt64Coin("uband", 2000)), 10000, 42000, info.GetAddress()),
+	gas, err := estimateGas(
+		ctx, txf, oracletypes.NewMsgRequestData(
+			401, cd, 16, 10, "test", sdk.NewCoins(sdk.NewInt64Coin("uband", 2000)), 10000, 42000, info.GetAddress(),
+		),
 	)
 	fmt.Println(gas)
 	require.NoError(t, err)
-
 }

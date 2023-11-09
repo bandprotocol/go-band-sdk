@@ -13,41 +13,24 @@ import (
 	"github.com/bandprotocol/go-band-sdk/utils/logger"
 )
 
-type Client interface {
-	// Query functions
-	GetAccount(account sdk.AccAddress) (client.Account, error)
-	GetTx(txHash string) (*sdk.TxResponse, error)
-	GetResult(id uint64) (*oracletypes.Result, error)
-	GetSignature(id uint64) ([]byte, error)
-	// TODO: Implement get balance for monitoring
-	// GetBalance(account sdk.AccAddress) (uint64, error)
-
-	// Build, sign, and broadcast transaction
-	SendRequest(msg *oracletypes.MsgRequestData, key keyring.Info) (*sdk.TxResponse, error)
-}
-
-var (
-	_ Client = &MultipleClient{}
-)
-
-// MultipleClient stores many clients to communicate with BandChain
-type MultipleClient struct {
-	ClientCtx client.Context
-	TxFactory tx.Factory
-	Nodes     []*rpchttp.HTTP
-	Keyring   keyring.Keyring
+// RPC stores many clients to communicate with BandChain
+type RPC struct {
+	ctx       client.Context
+	txFactory tx.Factory
+	nodes     []*rpchttp.HTTP
+	keyring   keyring.Keyring
 
 	logger logger.Logger
 }
 
-func NewMultipleClient(
+func NewRPC(
 	logger logger.Logger,
 	endpoints []string,
 	chainId string,
 	timeout string,
 	gasPrice string,
 	keyring keyring.Keyring,
-) (*MultipleClient, error) {
+) (*RPC, error) {
 	nodes := make([]*rpchttp.HTTP, 0, len(endpoints))
 	for _, endpoint := range endpoints {
 		node, err := newRPCClient(endpoint, timeout)
@@ -57,25 +40,25 @@ func NewMultipleClient(
 		nodes = append(nodes, node)
 	}
 
-	return &MultipleClient{
-		ClientCtx: NewClientCtx(chainId),
-		TxFactory: createTxFactory(chainId, gasPrice, keyring),
-		Nodes:     nodes,
-		Keyring:   keyring,
+	return &RPC{
+		ctx:       NewClientCtx(chainId),
+		txFactory: createTxFactory(chainId, gasPrice, keyring),
+		nodes:     nodes,
+		keyring:   keyring,
 		logger:    logger,
 	}, nil
 }
 
 // GetAccount find max account sequence from multiple clients
-func (c MultipleClient) GetAccount(account sdk.AccAddress) (client.Account, error) {
+func (c RPC) GetAccount(account sdk.AccAddress) (client.Account, error) {
 	var maxSeqAcc client.Account
 
 	resultc := make(chan client.Account)
 	failc := make(chan struct{})
 
-	for _, node := range c.Nodes {
+	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
-			account, err := getAccount(c.ClientCtx.WithClient(node), account)
+			account, err := getAccount(c.ctx.WithClient(node), account)
 			if err != nil {
 				failc <- struct{}{}
 			} else {
@@ -84,7 +67,7 @@ func (c MultipleClient) GetAccount(account sdk.AccAddress) (client.Account, erro
 		}(node)
 	}
 
-	for i := 0; i < len(c.Nodes); i++ {
+	for i := 0; i < len(c.nodes); i++ {
 		select {
 		case acc := <-resultc:
 			if maxSeqAcc == nil || acc.GetAccountNumber() > maxSeqAcc.GetAccountNumber() {
@@ -102,14 +85,14 @@ func (c MultipleClient) GetAccount(account sdk.AccAddress) (client.Account, erro
 	return maxSeqAcc, nil
 }
 
-func (c MultipleClient) GetResult(id uint64) (*oracletypes.Result, error) {
-	resultc := make(chan *oracletypes.Result, len(c.Nodes))
-	failc := make(chan struct{}, len(c.Nodes))
+func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
+	resultc := make(chan *oracletypes.Result, len(c.nodes))
+	failc := make(chan struct{}, len(c.nodes))
 
-	for _, node := range c.Nodes {
+	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
 			c.logger.Debug("Getting request", "Try to get request from %s", node.Remote())
-			res, err := getRequest(c.ClientCtx.WithClient(node), id)
+			res, err := getRequest(c.ctx.WithClient(node), id)
 			if err != nil {
 				c.logger.Warning(
 					"Fail to get request from single endpoint",
@@ -133,7 +116,7 @@ func (c MultipleClient) GetResult(id uint64) (*oracletypes.Result, error) {
 		}(node)
 	}
 
-	for i := 0; i < len(c.Nodes); i++ {
+	for i := 0; i < len(c.nodes); i++ {
 		select {
 		case res := <-resultc:
 			// Return the first result that we found
@@ -145,14 +128,14 @@ func (c MultipleClient) GetResult(id uint64) (*oracletypes.Result, error) {
 	return nil, fmt.Errorf("failed to get result from all endpoints")
 }
 
-func (c MultipleClient) GetTx(txHash string) (*sdk.TxResponse, error) {
-	resultc := make(chan *sdk.TxResponse, len(c.Nodes))
-	failc := make(chan struct{}, len(c.Nodes))
+func (c RPC) GetTx(txHash string) (*sdk.TxResponse, error) {
+	resultc := make(chan *sdk.TxResponse, len(c.nodes))
+	failc := make(chan struct{}, len(c.nodes))
 
-	for _, node := range c.Nodes {
+	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
-			c.logger.Debug("Getting tx", "Try to find tx(%s) from %s", txHash, node.Remote())
-			res, err := getTx(c.ClientCtx.WithClient(node), txHash)
+			c.logger.Debug("Getting txutil", "Try to find txutil(%s) from %s", txHash, node.Remote())
+			res, err := getTx(c.ctx.WithClient(node), txHash)
 			if err != nil {
 				c.logger.Debug(
 					"Fail to get transaction from single endpoint",
@@ -166,7 +149,7 @@ func (c MultipleClient) GetTx(txHash string) (*sdk.TxResponse, error) {
 		}(node)
 	}
 
-	for i := 0; i < len(c.Nodes); i++ {
+	for i := 0; i < len(c.nodes); i++ {
 		select {
 		case res := <-resultc:
 			// Return the first result that we found
@@ -178,30 +161,30 @@ func (c MultipleClient) GetTx(txHash string) (*sdk.TxResponse, error) {
 	return nil, fmt.Errorf("failed to find transaction from all endpoints")
 }
 
-func (c MultipleClient) GetSignature(id uint64) ([]byte, error) {
+func (c RPC) GetSignature(id uint64) ([]byte, error) {
 	// TODO: Implement when need TSS signature
 	return []byte{}, nil
 }
 
-func (c MultipleClient) SendRequest(msg *oracletypes.MsgRequestData, key keyring.Info) (*sdk.TxResponse, error) {
+func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, key keyring.Info) (*sdk.TxResponse, error) {
 	// Get account to get nonce of sender first
 	acc, err := c.GetAccount(key.GetAddress())
 	if err != nil {
 		return nil, err
 	}
 
-	txf := c.TxFactory.WithAccountNumber(acc.GetAccountNumber()).WithSequence(acc.GetSequence())
+	txf := c.txFactory.WithAccountNumber(acc.GetAccountNumber()).WithSequence(acc.GetSequence())
 	// Estimate gas
-	gasc := make(chan uint64, len(c.Nodes))
-	failc := make(chan struct{}, len(c.Nodes))
+	gasc := make(chan uint64, len(c.nodes))
+	failc := make(chan struct{}, len(c.nodes))
 
-	for _, node := range c.Nodes {
+	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
-			c.logger.Debug("Estimating tx gas", "From %s", node.Remote())
-			gas, err := estimateGas(c.ClientCtx.WithClient(node), txf, msg)
+			c.logger.Debug("Estimating txutil gas", "From %s", node.Remote())
+			gas, err := estimateGas(c.ctx.WithClient(node), txf, msg)
 			if err != nil {
 				c.logger.Warning(
-					"Fail to estimate tx gas from single endpoint",
+					"Fail to estimate txutil gas from single endpoint",
 					"From %s",
 					node.Remote(),
 				)
@@ -215,7 +198,7 @@ func (c MultipleClient) SendRequest(msg *oracletypes.MsgRequestData, key keyring
 	gas := uint64(0)
 
 Gas:
-	for i := 0; i < len(c.Nodes); i++ {
+	for i := 0; i < len(c.nodes); i++ {
 		select {
 		case gas = <-gasc:
 			// Return the first result that we found
@@ -230,32 +213,32 @@ Gas:
 		return nil, fmt.Errorf("fail to estimate gas")
 	}
 
-	// Build unsigned tx with estimated gas
+	// Build unsigned txutil with estimated gas
 	txf = txf.WithGas(gas)
 	txb, err := tx.BuildUnsignedTx(txf, msg)
 	if err != nil {
 		return nil, err
 	}
 
-	// Sign tx
+	// Sign txutil
 	err = tx.Sign(txf, key.GetName(), txb, false)
 	if err != nil {
 		return nil, err
 	}
 
 	// Generate the transaction bytes
-	txBytes, err := c.ClientCtx.TxConfig.TxEncoder()(txb.GetTx())
+	txBytes, err := c.ctx.TxConfig.TxEncoder()(txb.GetTx())
 	if err != nil {
 		return nil, err
 	}
 
-	resultc := make(chan *sdk.TxResponse, len(c.Nodes))
-	errorc := make(chan struct{}, len(c.Nodes))
+	resultc := make(chan *sdk.TxResponse, len(c.nodes))
+	errorc := make(chan struct{}, len(c.nodes))
 
-	for _, node := range c.Nodes {
+	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
-			c.logger.Debug("Broadcasting tx", "Try to broadcast tx to %s", node.Remote())
-			res, err := c.ClientCtx.WithClient(node).BroadcastTx(txBytes)
+			c.logger.Debug("Broadcasting txutil", "Try to broadcast txutil to %s", node.Remote())
+			res, err := c.ctx.WithClient(node).BroadcastTx(txBytes)
 			if err != nil {
 				c.logger.Warning(
 					"Fail to broadcast to single endpoint",
@@ -269,14 +252,14 @@ Gas:
 		}(node)
 	}
 
-	for i := 0; i < len(c.Nodes); i++ {
+	for i := 0; i < len(c.nodes); i++ {
 		select {
 		case res := <-resultc:
-			// Return the first tx response that we found
+			// Return the first txutil response that we found
 			return res, nil
 		case <-errorc:
 		}
 	}
-	// If the tx cannot broadcast to all nodes, return an error
+	// If the txutil cannot broadcast to all nodes, return an error
 	return nil, fmt.Errorf("failed to find transaction from all endpoints")
 }

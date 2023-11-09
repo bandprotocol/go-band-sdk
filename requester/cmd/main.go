@@ -10,7 +10,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/bandprotocol/go-band-sdk/requester/client"
+	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/sender"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
 	"github.com/bandprotocol/go-band-sdk/utils/logger"
@@ -27,7 +27,7 @@ func main() {
 	mnemonic := "child across insect stone enter jacket bitter citizen inch wear breeze adapt come attend vehicle caught wealth junk cloth velvet wheat curious prize panther"
 	hdPath := hd.CreateHDPath(band.Bip44CoinType, 0, 0)
 	info, _ := kb.NewAccount("sender1", mnemonic, "", hdPath.String(), hd.Secp256k1)
-	c, err := client.NewMultipleClient(
+	c, err := client.NewClient(
 		l,
 		[]string{"https://rpc.laozi-testnet6.bandchain.org:443"},
 		"band-laozi-testnet6",
