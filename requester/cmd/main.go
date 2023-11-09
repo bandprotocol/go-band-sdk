@@ -22,12 +22,12 @@ func main() {
 
 	requestsCh := make(chan types.Request, 5)
 
-	l := logger.NewLogrusLogger("debug")
+	l := logger.NewLogrus("debug")
 	kb := keyring.NewInMemory()
 	mnemonic := "child across insect stone enter jacket bitter citizen inch wear breeze adapt come attend vehicle caught wealth junk cloth velvet wheat curious prize panther"
 	hdPath := hd.CreateHDPath(band.Bip44CoinType, 0, 0)
 	info, _ := kb.NewAccount("sender1", mnemonic, "", hdPath.String(), hd.Secp256k1)
-	c, err := client.NewClient(
+	c, err := client.NewRPC(
 		l,
 		[]string{"https://rpc.laozi-testnet6.bandchain.org:443"},
 		"band-laozi-testnet6",
