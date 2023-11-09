@@ -12,7 +12,7 @@ func New(code int, reason string) Error {
 }
 
 // Error returns the error message.
-func (e Error) Error() string {
+func (e *Error) Error() string {
 	return e.Reason
 }
 
