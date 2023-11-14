@@ -16,7 +16,7 @@ import (
 	"github.com/bandprotocol/go-band-sdk/utils/logger"
 )
 
-// RPC stores many clients to communicate with BandChain
+// RPC implements Clients by using multiple RPC nodes
 type RPC struct {
 	ctx       client.Context
 	txFactory tx.Factory
@@ -137,7 +137,7 @@ func (c RPC) GetTx(txHash string) (*sdk.TxResponse, error) {
 
 	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
-			c.logger.Debug("Getting txutil", "Try to find txutil(%s) from %s", txHash, node.Remote())
+			c.logger.Debug("Getting tx", "Try to find tx (%s) from %s", txHash, node.Remote())
 			res, err := getTx(c.ctx.WithClient(node), txHash)
 			if err != nil {
 				c.logger.Debug(
@@ -311,7 +311,7 @@ Gas:
 		return nil, fmt.Errorf("fail to estimate gas")
 	}
 
-	// Build unsigned txutil with estimated gas
+	// Build unsigned tx with estimated gas
 	txf = txf.WithGas(gas)
 	txf.WithGasPrices(fmt.Sprintf("%v0uband", gasPrice))
 	txb, err := tx.BuildUnsignedTx(txf, msg)
@@ -319,7 +319,7 @@ Gas:
 		return nil, err
 	}
 
-	// Sign txutil
+	// Sign tx
 	err = tx.Sign(txf, key.GetName(), txb, false)
 	if err != nil {
 		return nil, err
