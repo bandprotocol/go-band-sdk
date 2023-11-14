@@ -1,32 +1,35 @@
 package sender
 
 import (
+	"time"
+
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
 	"github.com/bandprotocol/go-band-sdk/client"
-	"github.com/bandprotocol/go-band-sdk/requester/middleware"
-	"github.com/bandprotocol/go-band-sdk/requester/types"
 	"github.com/bandprotocol/go-band-sdk/utils/logger"
 )
 
 type Sender struct {
-	client client.Clienter
+	client client.Client
 	logger logger.Logger
 
-	retryMiddlewares []middleware.Retry
-
 	freeKeys chan keyring.Info
+	gasPrice float64
+
+	timeout      time.Duration
+	pollingDelay time.Duration
 
 	// Channel
-	requestQueueCh       chan types.Request
-	successfulRequestsCh chan types.RequestResult
-	failedRequestCh      chan types.FailedRequest
+	requestQueueCh       chan Task
+	successfulRequestsCh chan SuccessResponse
+	failedRequestCh      chan FailResponse
 }
 
 func NewSender(
-	client client.Clienter,
+	client client.Client,
 	logger logger.Logger,
-	RequestQueueCh chan types.Request,
+	RequestQueueCh chan Task,
+	gasPrice float64,
 	kr keyring.Keyring,
 ) (*Sender, error) {
 	infos, err := kr.List()
@@ -42,23 +45,19 @@ func NewSender(
 	return &Sender{
 		client:               client,
 		logger:               logger,
-		retryMiddlewares:     make([]middleware.Retry, 0),
 		freeKeys:             freeKeys,
+		gasPrice:             gasPrice,
 		requestQueueCh:       RequestQueueCh,
-		successfulRequestsCh: make(chan types.RequestResult),
-		failedRequestCh:      make(chan types.FailedRequest),
+		successfulRequestsCh: make(chan SuccessResponse),
+		failedRequestCh:      make(chan FailResponse),
 	}, nil
 }
 
-func (s *Sender) WithRetryMiddleware(middlewares []middleware.Retry) {
-	s.retryMiddlewares = middlewares
-}
-
-func (s *Sender) SuccessRequestsCh() <-chan types.RequestResult {
+func (s *Sender) SuccessRequestsCh() <-chan SuccessResponse {
 	return s.successfulRequestsCh
 }
 
-func (s *Sender) FailedRequestsCh() <-chan types.FailedRequest {
+func (s *Sender) FailedRequestsCh() <-chan FailResponse {
 	return s.failedRequestCh
 }
 
@@ -70,44 +69,36 @@ func (s *Sender) Start() {
 	}
 }
 
-func (s *Sender) request(req types.Request, key keyring.Info) {
-	var fr types.FailedRequest
-	var r types.RequestResult
-	var retry = true
+func (s *Sender) request(req Task, key keyring.Info) {
+	var r = SuccessResponse{Task: req}
 
 	defer func() {
 		s.freeKeys <- key
 	}()
 
-	defer func() {
-		fr.RequestResult = r
-		if retry {
-			s.executeRetryMiddleware(fr)
-		}
-	}()
-
-	// Mutate the msg sender to the actual sender
+	// Mutate the msg's sender to the actual sender
 	req.Msg.Sender = key.GetAddress().String()
 
 	// Attempt to send the request
-	res, err := s.client.SendRequest(req.Msg, key)
-	r.TxResponse = *res
+	res, err := s.client.SendRequest(&req.Msg, s.gasPrice, key)
 	if res.Code != 0 || err != nil {
-		fr.Error = err
+		s.failedRequestCh <- FailResponse{r, err}
 		return
 	}
+	txHash := res.TxHash
 
-	retry = false
-	s.successfulRequestsCh <- types.RequestResult{TxResponse: *res}
-}
-
-func (s *Sender) executeRetryMiddleware(fr types.FailedRequest) {
-	for _, mw := range s.retryMiddlewares {
-		fr, next := mw.Call(fr)
-		if !next {
-			s.failedRequestCh <- fr
+	// Poll for tx confirmation
+	et := time.Now().Add(s.timeout)
+	for time.Now().Before(et) {
+		resp, err := s.client.GetTx(txHash)
+		if resp.Code != 0 || err != nil {
+			s.failedRequestCh <- FailResponse{r, err}
 			return
 		}
+		r.TxResponse = *resp
+
+		time.Sleep(s.pollingDelay)
 	}
-	s.requestQueueCh <- fr.Request
+
+	s.successfulRequestsCh <- SuccessResponse{TxResponse: *res}
 }
