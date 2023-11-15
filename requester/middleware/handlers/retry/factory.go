@@ -1,6 +1,8 @@
 package retry
 
 import (
+	"sync"
+
 	"github.com/bandprotocol/go-band-sdk/requester/types"
 	"github.com/bandprotocol/go-band-sdk/utils/logger"
 )
@@ -13,7 +15,7 @@ type HandlerFactory struct {
 
 func NewHandlerFactory(maxTry uint64, logger logger.Logger) *HandlerFactory {
 	return &HandlerFactory{
-		counter: Counter{cache: make(map[uint64]uint64)},
+		counter: Counter{cache: sync.Map{}},
 		maxTry:  maxTry,
 		logger:  logger,
 	}

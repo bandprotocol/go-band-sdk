@@ -69,20 +69,20 @@ func (s *Sender) Start() {
 	}
 }
 
-func (s *Sender) request(req Task, key keyring.Info) {
-	var r = SuccessResponse{Task: req}
+func (s *Sender) request(task Task, key keyring.Info) {
+	//var r = SuccessResponse{Task: req}
 
 	defer func() {
 		s.freeKeys <- key
 	}()
 
 	// Mutate the msg's sender to the actual sender
-	req.Msg.Sender = key.GetAddress().String()
+	task.Msg.Sender = key.GetAddress().String()
 
 	// Attempt to send the request
-	res, err := s.client.SendRequest(&req.Msg, s.gasPrice, key)
+	res, err := s.client.SendRequest(&task.Msg, s.gasPrice, key)
 	if res.Code != 0 || err != nil {
-		s.failedRequestCh <- FailResponse{r, err}
+		s.failedRequestCh <- FailResponse{task, *res, err}
 		return
 	}
 	txHash := res.TxHash
@@ -90,15 +90,19 @@ func (s *Sender) request(req Task, key keyring.Info) {
 	// Poll for tx confirmation
 	et := time.Now().Add(s.timeout)
 	for time.Now().Before(et) {
+
 		resp, err := s.client.GetTx(txHash)
-		if resp.Code != 0 || err != nil {
-			s.failedRequestCh <- FailResponse{r, err}
+		if err != nil {
+			time.Sleep(s.pollingDelay)
+			continue
+		}
+
+		if resp.Code != 0 {
+			s.failedRequestCh <- FailResponse{task, *res, err}
+			return
+		} else {
+			s.successfulRequestsCh <- SuccessResponse{task, *res}
 			return
 		}
-		r.TxResponse = *resp
-
-		time.Sleep(s.pollingDelay)
 	}
-
-	s.successfulRequestsCh <- SuccessResponse{TxResponse: *res}
 }

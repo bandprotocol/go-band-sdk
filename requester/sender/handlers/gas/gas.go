@@ -28,7 +28,7 @@ func (m *InsufficientPrepareGasHandler) Handle(
 ) (sender.Task, error) {
 	req, err := next(ctx)
 
-	txResp := ctx.SuccessResponse.TxResponse
+	txResp := ctx.TxResponse
 	if txResp.Codespace == oracletypes.ModuleName && txResp.Code == oracletypes.ErrBadWasmExecution.ABCICode() {
 		if strings.Contains(txResp.RawLog, api.ErrOutOfGas.Error()) {
 			req.Msg.PrepareGas = uint64(float64(req.Msg.PrepareGas) * m.gasMultiplier)

@@ -57,28 +57,26 @@ func (w *Watcher) Start() {
 }
 
 func (w *Watcher) watch(task Task) {
-	var r SuccessResponse
-
 	et := time.Now().Add(w.timeout)
 	for time.Now().Before(et) {
 		res, err := w.client.GetResult(task.RequestID)
-		r.Result = *res
 		if err != nil {
-			w.failedRequestCh <- FailResponse{r, err}
-			return
+			time.Sleep(w.pollingDelay)
+			continue
 		}
 
 		switch res.GetResolveStatus() {
 		case oracletypes.RESOLVE_STATUS_OPEN:
 			// if request ID found, poll till results gotten or timeout
+			time.Sleep(w.pollingDelay)
 			break
 		case oracletypes.RESOLVE_STATUS_SUCCESS:
-			w.successfulRequestCh <- r
+			w.successfulRequestCh <- SuccessResponse{task, *res}
+			return
 		default:
-			w.failedRequestCh <- FailResponse{r, errors.New("unknown")}
+			w.failedRequestCh <- FailResponse{task, *res, errors.New("unknown")}
 			return
 		}
-		time.Sleep(w.pollingDelay)
 	}
-	w.failedRequestCh <- FailResponse{r, errors.New("timed out")}
+	w.failedRequestCh <- FailResponse{task, oracletypes.Result{}, errors.New("timed out")}
 }

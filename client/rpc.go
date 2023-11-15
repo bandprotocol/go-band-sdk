@@ -197,9 +197,12 @@ func (c RPC) GetBlockResult(height int64) (*ctypes.ResultBlockResults, error) {
 	resultCh := make(chan *ctypes.ResultBlockResults)
 	failCh := make(chan struct{})
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
-			blockResult, err := node.BlockResults(context.Background(), &height)
+			blockResult, err := node.BlockResults(ctx, &height)
 			if err != nil {
 				failCh <- struct{}{}
 			} else {
