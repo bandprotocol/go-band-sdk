@@ -7,7 +7,7 @@ import (
 )
 
 var _ types.Task = &Task{}
-var _ types.SuccessResponse = &Response{}
+var _ types.SuccessResponse = &SuccessResponse{}
 var _ types.FailResponse = &FailResponse{}
 
 type Task struct {
@@ -28,13 +28,14 @@ func (t Task) ID() uint64 {
 	return t.id
 }
 
-type Response struct {
+type SuccessResponse struct {
 	Task
 	oracletypes.Result
 }
 
 type FailResponse struct {
-	Response
+	Task
+	oracletypes.Result
 	error error
 }
 

@@ -19,7 +19,7 @@ type Watcher struct {
 
 	// Channel
 	watchQueueCh        chan Task
-	successfulRequestCh chan Response
+	successfulRequestCh chan SuccessResponse
 	failedRequestCh     chan FailResponse
 }
 
@@ -36,12 +36,12 @@ func NewWatcher(
 		pollingDelay:        pollingDelay,
 		timeout:             timeout,
 		watchQueueCh:        watchQueueCh,
-		successfulRequestCh: make(chan Response),
+		successfulRequestCh: make(chan SuccessResponse),
 		failedRequestCh:     make(chan FailResponse),
 	}
 }
 
-func (w *Watcher) SuccessfulRequestCh() <-chan Response {
+func (w *Watcher) SuccessfulRequestCh() <-chan SuccessResponse {
 	return w.successfulRequestCh
 }
 
@@ -57,7 +57,7 @@ func (w *Watcher) Start() {
 }
 
 func (w *Watcher) watch(task Task) {
-	var r Response
+	var r SuccessResponse
 
 	et := time.Now().Add(w.timeout)
 	for time.Now().Before(et) {

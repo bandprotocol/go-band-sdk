@@ -29,7 +29,7 @@ type RPC struct {
 func NewRPC(
 	logger logger.Logger,
 	endpoints []string,
-	chainId string,
+	chainID string,
 	timeout string,
 	gasPrice string,
 	keyring keyring.Keyring,
@@ -44,8 +44,8 @@ func NewRPC(
 	}
 
 	return &RPC{
-		ctx:       NewClientCtx(chainId),
-		txFactory: createTxFactory(chainId, gasPrice, keyring),
+		ctx:       NewClientCtx(chainID),
+		txFactory: createTxFactory(chainID, gasPrice, keyring),
 		nodes:     nodes,
 		keyring:   keyring,
 		logger:    logger,
@@ -168,9 +168,12 @@ func (c RPC) BlockSearch(query string, page *int, perPage *int, orderBy string) 
 	resultCh := make(chan *ctypes.ResultBlockSearch)
 	failCh := make(chan struct{})
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
-			blockResult, err := node.BlockSearch(context.Background(), query, page, perPage, orderBy)
+			blockResult, err := node.BlockSearch(ctx, query, page, perPage, orderBy)
 			if err != nil || blockResult.TotalCount == 0 {
 				failCh <- struct{}{}
 			} else {

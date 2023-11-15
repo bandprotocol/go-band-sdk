@@ -5,23 +5,23 @@ import (
 )
 
 type Counter struct {
-	cache map[uint64]uint64
-	mu    sync.Mutex
+	cache sync.Map
 }
 
 func (c *Counter) Inc(id uint64) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.cache[id] += 1
+	v, ok := c.cache.Load(id)
+	if !ok {
+		c.cache.Store(id, uint64(1))
+	} else {
+		c.cache.Store(id, v.(uint64)+1)
+	}
 }
 
 func (c *Counter) Clear(id uint64) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	delete(c.cache, id)
+	c.cache.Delete(id)
 }
 
 func (c *Counter) Peek(id uint64) (uint64, bool) {
-	v, ok := c.cache[id]
-	return v, ok
+	v, ok := c.cache.Load(id)
+	return v.(uint64), ok
 }

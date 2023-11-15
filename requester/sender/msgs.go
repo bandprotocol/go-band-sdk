@@ -26,8 +26,9 @@ type SuccessResponse struct {
 }
 
 type FailResponse struct {
-	SuccessResponse
-	error error
+	Task
+	TxResponse sdk.TxResponse
+	error      error
 }
 
 func (fr FailResponse) Error() error {
