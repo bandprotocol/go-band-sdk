@@ -43,11 +43,11 @@ func main() {
 	}
 	// Setup Sender
 	senderCh := make(chan sender.Task, 100)
-	s, err := sender.NewSender(cl, l, senderCh, 0.0025, kb)
+	s, err := sender.NewSender(cl, l, senderCh, 100, 100, 0.0025, kb)
 
 	// Setup Watcher
 	watcherCh := make(chan request.Task, 100)
-	rw := request.NewWatcher(cl, l, 10*time.Second, 10*time.Second, watcherCh)
+	rw := request.NewWatcher(cl, l, 10*time.Second, 10*time.Second, watcherCh, 100, 100)
 
 	// Setup retry and delay handlers
 	factory := retry.NewHandlerFactory(3, l)

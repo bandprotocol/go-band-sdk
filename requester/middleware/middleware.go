@@ -24,6 +24,8 @@ func New[T, U any](
 }
 
 func (m *Middleware[T, U]) Run() {
+	// Note: Add non-blocking middleware (eg. success middleware
+	// that we just want to log/save to DB but don't want to wait to finish)
 	for {
 		in := <-m.inCh
 		out, err := m.chain(in)

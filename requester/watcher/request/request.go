@@ -29,6 +29,8 @@ func NewWatcher(
 	pollingDelay time.Duration,
 	timeout time.Duration,
 	watchQueueCh chan Task,
+	successChBufferSize int,
+	failureChBufferSize int,
 ) *Watcher {
 	return &Watcher{
 		client:              client,
@@ -36,8 +38,8 @@ func NewWatcher(
 		pollingDelay:        pollingDelay,
 		timeout:             timeout,
 		watchQueueCh:        watchQueueCh,
-		successfulRequestCh: make(chan SuccessResponse),
-		failedRequestCh:     make(chan FailResponse),
+		successfulRequestCh: make(chan SuccessResponse, successChBufferSize),
+		failedRequestCh:     make(chan FailResponse, failureChBufferSize),
 	}
 }
 

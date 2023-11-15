@@ -84,7 +84,7 @@ func estimateGas(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (uin
 
 func GetRequestID(events []sdk.StringEvent) (uint64, error) {
 	for _, event := range events {
-		if event.Type == "request" {
+		if event.Type == oracletypes.EventTypeRequest {
 			rid, err := strconv.ParseUint(event.Attributes[0].Value, 10, 64)
 			if err != nil {
 				return 0, err

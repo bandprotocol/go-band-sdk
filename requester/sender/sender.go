@@ -29,6 +29,8 @@ func NewSender(
 	client client.Client,
 	logger logger.Logger,
 	RequestQueueCh chan Task,
+	successChBufferSize int,
+	failureChBufferSize int,
 	gasPrice float64,
 	kr keyring.Keyring,
 ) (*Sender, error) {
@@ -48,8 +50,8 @@ func NewSender(
 		freeKeys:             freeKeys,
 		gasPrice:             gasPrice,
 		requestQueueCh:       RequestQueueCh,
-		successfulRequestsCh: make(chan SuccessResponse),
-		failedRequestCh:      make(chan FailResponse),
+		successfulRequestsCh: make(chan SuccessResponse, successChBufferSize),
+		failedRequestCh:      make(chan FailResponse, failureChBufferSize),
 	}, nil
 }
 

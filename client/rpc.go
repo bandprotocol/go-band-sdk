@@ -16,6 +16,8 @@ import (
 	"github.com/bandprotocol/go-band-sdk/utils/logger"
 )
 
+var _ Client = &RPC{}
+
 // RPC implements Clients by using multiple RPC nodes
 type RPC struct {
 	ctx       client.Context

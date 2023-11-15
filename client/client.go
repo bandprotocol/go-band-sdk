@@ -23,7 +23,3 @@ type Client interface {
 	// Build, sign, and broadcast transaction
 	SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key keyring.Info) (*sdk.TxResponse, error)
 }
-
-var (
-	_ Client = &RPC{}
-)
