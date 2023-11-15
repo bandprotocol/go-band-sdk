@@ -28,10 +28,12 @@ func (m *Middleware[T, U]) Run() {
 	// that we just want to log/save to DB but don't want to wait to finish)
 	for {
 		in := <-m.inCh
-		out, err := m.chain(in)
-		if err != nil {
-			continue
-		}
-		m.outCh <- out
+		go func(in T) {
+			out, err := m.chain(in)
+			if err != nil {
+				return
+			}
+			m.outCh <- out
+		}(in)
 	}
 }
