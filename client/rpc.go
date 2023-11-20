@@ -249,11 +249,11 @@ func (c RPC) QueryRequestFailureReason(id uint64) (string, error) {
 
 			for _, attr := range event.Attributes {
 				switch string(attr.Key) {
-				case "id":
+				case oracletypes.AttributeKeyID:
 					rid, _ = strconv.ParseUint(string(attr.Value), 10, 64)
-				case "resolve_status":
+				case oracletypes.AttributeKeyResolveStatus:
 					resolveStatus, _ = strconv.ParseUint(string(attr.Value), 10, 64)
-				case "reason":
+				case oracletypes.AttributeKeyReason:
 					reason = string(attr.Value)
 				}
 			}
