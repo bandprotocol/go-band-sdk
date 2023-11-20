@@ -242,7 +242,7 @@ func (c RPC) QueryRequestFailureReason(id uint64) (string, error) {
 	}
 
 	for _, event := range blockResult.EndBlockEvents {
-		if event.Type == "reason" {
+		if event.Type == oracletypes.EventTypeResolve {
 			rid := uint64(0)
 			resolveStatus := uint64(0)
 			reason := ""
