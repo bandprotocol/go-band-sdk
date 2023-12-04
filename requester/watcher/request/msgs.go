@@ -36,9 +36,9 @@ type SuccessResponse struct {
 type FailResponse struct {
 	Task
 	oracletypes.Result
-	error error
+	error types.Error
 }
 
-func (r FailResponse) Error() error {
-	return r.error
+func (r FailResponse) Error() string {
+	return r.error.Error()
 }

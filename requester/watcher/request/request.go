@@ -1,12 +1,12 @@
 package request
 
 import (
-	"errors"
 	"time"
 
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 
 	"github.com/bandprotocol/go-band-sdk/client"
+	"github.com/bandprotocol/go-band-sdk/requester/types"
 	"github.com/bandprotocol/go-band-sdk/utils/logger"
 )
 
@@ -18,7 +18,7 @@ type Watcher struct {
 	timeout      time.Duration
 
 	// Channel
-	watchQueueCh        chan Task
+	watchQueueCh        <-chan Task
 	successfulRequestCh chan SuccessResponse
 	failedRequestCh     chan FailResponse
 }
@@ -76,9 +76,10 @@ func (w *Watcher) watch(task Task) {
 			w.successfulRequestCh <- SuccessResponse{task, *res}
 			return
 		default:
-			w.failedRequestCh <- FailResponse{task, *res, errors.New("unknown")}
+			wrappedErr := types.ErrUnknown.Wrapf("request ID %d failed with unknown reason: %s", task.RequestID, err)
+			w.failedRequestCh <- FailResponse{task, *res, wrappedErr}
 			return
 		}
 	}
-	w.failedRequestCh <- FailResponse{task, oracletypes.Result{}, errors.New("timed out")}
+	w.failedRequestCh <- FailResponse{task, oracletypes.Result{}, types.ErrTimedOut}
 }

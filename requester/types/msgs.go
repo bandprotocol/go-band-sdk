@@ -10,7 +10,7 @@ type SuccessResponse interface {
 
 type FailResponse interface {
 	Task
-	Error() error
+	Error() string
 }
 
 //

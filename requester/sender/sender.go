@@ -6,6 +6,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 
 	"github.com/bandprotocol/go-band-sdk/client"
+	"github.com/bandprotocol/go-band-sdk/requester/types"
 	"github.com/bandprotocol/go-band-sdk/utils/logger"
 )
 
@@ -84,7 +85,7 @@ func (s *Sender) request(task Task, key keyring.Info) {
 	// Attempt to send the request
 	res, err := s.client.SendRequest(&task.Msg, s.gasPrice, key)
 	if res.Code != 0 || err != nil {
-		s.failedRequestCh <- FailResponse{task, *res, err}
+		s.failedRequestCh <- FailResponse{task, *res, types.ErrBroadcastFailed.Wrapf(err.Error())}
 		return
 	}
 	txHash := res.TxHash
@@ -100,7 +101,7 @@ func (s *Sender) request(task Task, key keyring.Info) {
 		}
 
 		if resp.Code != 0 {
-			s.failedRequestCh <- FailResponse{task, *res, err}
+			s.failedRequestCh <- FailResponse{task, *res, types.ErrBroadcastFailed.Wrapf(resp.RawLog)}
 			return
 		} else {
 			s.successfulRequestsCh <- SuccessResponse{task, *res}

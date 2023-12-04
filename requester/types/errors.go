@@ -27,5 +27,6 @@ var (
 	ErrOutOfPrepareGas   = New(2, "out of prepare gas")
 	ErrInsufficientFunds = New(3, "insufficient funds")
 	ErrUnconfirmedTx     = New(4, "tx wasn't confirmed within timeout")
+	ErrTimedOut          = New(5, "timed out")
 	ErrUnknown           = New(999, "unexpected error")
 )

@@ -28,9 +28,9 @@ type SuccessResponse struct {
 type FailResponse struct {
 	Task
 	TxResponse sdk.TxResponse
-	error      error
+	error      types.Error
 }
 
-func (fr FailResponse) Error() error {
-	return fr.error
+func (r FailResponse) Error() string {
+	return r.error.Error()
 }
