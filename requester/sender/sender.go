@@ -73,8 +73,6 @@ func (s *Sender) Start() {
 }
 
 func (s *Sender) request(task Task, key keyring.Info) {
-	//var r = SuccessResponse{Task: req}
-
 	defer func() {
 		s.freeKeys <- key
 	}()

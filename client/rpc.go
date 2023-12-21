@@ -63,16 +63,16 @@ func (c RPC) GetAccount(account sdk.AccAddress) (client.Account, error) {
 
 	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
-			account, err := getAccount(c.ctx.WithClient(node), account)
+			acc, err := getAccount(c.ctx.WithClient(node), account)
 			if err != nil {
 				failCh <- struct{}{}
 			} else {
-				resultCh <- account
+				resultCh <- acc
 			}
 		}(node)
 	}
 
-	for i := 0; i < len(c.nodes); i++ {
+	for _ = range c.nodes {
 		select {
 		case acc := <-resultCh:
 			if maxSeqAcc == nil || acc.GetAccountNumber() > maxSeqAcc.GetAccountNumber() {
@@ -80,7 +80,6 @@ func (c RPC) GetAccount(account sdk.AccAddress) (client.Account, error) {
 			}
 		case <-failCh:
 		}
-
 	}
 
 	if maxSeqAcc == nil {
@@ -98,6 +97,7 @@ func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
 		go func(node *rpchttp.HTTP) {
 			c.logger.Debug("Getting request", "Try to get request from %s", node.Remote())
 			res, err := getRequest(c.ctx.WithClient(node), id)
+
 			if err != nil {
 				c.logger.Warning(
 					"Fail to get request from single endpoint",
@@ -107,17 +107,18 @@ func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
 				failCh <- struct{}{}
 				return
 			}
-			if res.Result != nil {
-				resultCh <- res.Result
-			} else {
+
+			if res.Result == nil {
 				c.logger.Debug(
 					"Request has not been resolved yet",
 					"Get result from %s, but request #%d has not been resolved yet",
 					node.Remote(), id,
 				)
 				failCh <- struct{}{}
+				return
 			}
 
+			resultCh <- res.Result
 		}(node)
 	}
 
@@ -321,7 +322,7 @@ Gas:
 
 	// Build unsigned tx with estimated gas
 	txf = txf.WithGas(gas)
-	txf.WithGasPrices(fmt.Sprintf("%v0uband", gasPrice))
+	txf = txf.WithGasPrices(fmt.Sprintf("%vuband", gasPrice))
 	txb, err := tx.BuildUnsignedTx(txf, msg)
 	if err != nil {
 		return nil, err

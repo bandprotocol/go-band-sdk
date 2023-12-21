@@ -23,5 +23,8 @@ func (c *Counter) Clear(id uint64) {
 
 func (c *Counter) Peek(id uint64) (uint64, bool) {
 	v, ok := c.cache.Load(id)
+	if !ok {
+		v = 0
+	}
 	return v.(uint64), ok
 }

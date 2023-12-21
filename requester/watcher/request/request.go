@@ -52,8 +52,7 @@ func (w *Watcher) FailedRequestCh() <-chan FailResponse {
 }
 
 func (w *Watcher) Start() {
-	for {
-		request := <-w.watchQueueCh
+	for request := range w.watchQueueCh {
 		go w.watch(request)
 	}
 }
