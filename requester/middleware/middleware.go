@@ -13,8 +13,13 @@ func New[T, U any](
 	handlers ...Handler[T, U],
 ) *Middleware[T, U] {
 	handlerChain := make([]HandlerFunc[T, U], len(handlers)+1)
+	if len(handlers) == 0 {
+		return &Middleware[T, U]{inCh: inCh, outCh: outCh, chain: parser}
+	}
+
 	handlerChain[len(handlers)] = parser
 	for i := len(handlers) - 1; i >= 0; i-- {
+		i := i
 		handlerChain[i] = func(ctx T) (U, error) {
 			return handlers[i].Handle(ctx, handlerChain[i+1])
 		}

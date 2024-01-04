@@ -1,6 +1,7 @@
 package sender
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -68,6 +69,11 @@ func (s *Sender) Start() {
 	for {
 		req := <-s.requestQueueCh
 		key := <-s.freeKeys
+		// Assume all tasks can be marshalled
+		b, _ := json.Marshal(req.Msg)
+
+		s.logger.Info("Sender", "querying request with ID(%d) with payload: %s", req.ID(), string(b))
+
 		go s.request(req, key)
 	}
 }
@@ -81,17 +87,19 @@ func (s *Sender) request(task Task, key keyring.Info) {
 	task.Msg.Sender = key.GetAddress().String()
 
 	// Attempt to send the request
-	res, err := s.client.SendRequest(&task.Msg, s.gasPrice, key)
-	if res.Code != 0 || err != nil {
-		s.failedRequestCh <- FailResponse{task, *res, types.ErrBroadcastFailed.Wrapf(err.Error())}
+	resp, err := s.client.SendRequest(&task.Msg, s.gasPrice, key)
+	if resp.Code != 0 || err != nil {
+		s.logger.Warning("Sender", "failed to broadcast request ID(%d) with code %d", task.ID(), resp.Code)
+		s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf(err.Error())}
 		return
 	}
-	txHash := res.TxHash
+
+	txHash := resp.TxHash
+	s.logger.Info("Sender", "successfully broadcasted request ID(%d) with tx_hash: %s", task.ID(), txHash)
 
 	// Poll for tx confirmation
 	et := time.Now().Add(s.timeout)
-	for time.Now().Before(et) {
-
+	for !time.Now().Before(et) {
 		resp, err := s.client.GetTx(txHash)
 		if err != nil {
 			time.Sleep(s.pollingDelay)
@@ -99,11 +107,15 @@ func (s *Sender) request(task Task, key keyring.Info) {
 		}
 
 		if resp.Code != 0 {
-			s.failedRequestCh <- FailResponse{task, *res, types.ErrBroadcastFailed.Wrapf(resp.RawLog)}
+			s.logger.Warning("Sender", "request ID(%d) failed with code %d", task.ID(), resp.Code)
+			s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf(resp.RawLog)}
 			return
 		} else {
-			s.successfulRequestsCh <- SuccessResponse{task, *res}
+			s.logger.Info("Sender", "request ID(%d) has been confirmed", task.ID())
+			s.successfulRequestsCh <- SuccessResponse{task, *resp}
 			return
 		}
 	}
+	s.logger.Warning("Sender", "request ID(%d) has timed out", task.ID())
+	s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf("timed out")}
 }

@@ -1,6 +1,7 @@
 package request
 
 import (
+	"encoding/json"
 	"time"
 
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
@@ -72,9 +73,15 @@ func (w *Watcher) watch(task Task) {
 			time.Sleep(w.pollingDelay)
 			break
 		case oracletypes.RESOLVE_STATUS_SUCCESS:
+			// Assume all results can be marshalled
+			b, _ := json.Marshal(res)
+			w.logger.Info("Watcher", "request ID(%d) has been resolved with result: %s", task.ID(), string(b))
 			w.successfulRequestCh <- SuccessResponse{task, *res}
 			return
 		default:
+			// Assume all results can be marshalled
+			b, _ := json.Marshal(res)
+			w.logger.Info("Watcher", "request ID(%d) has failed with result: %s", task.ID(), string(b))
 			wrappedErr := types.ErrUnknown.Wrapf("request ID %d failed with unknown reason: %s", task.RequestID, err)
 			w.failedRequestCh <- FailResponse{task, *res, wrappedErr}
 			return

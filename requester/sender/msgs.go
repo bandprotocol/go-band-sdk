@@ -16,6 +16,13 @@ type Task struct {
 	Msg oracletypes.MsgRequestData
 }
 
+func NewTask(id uint64, msg oracletypes.MsgRequestData) Task {
+	return Task{
+		id:  id,
+		Msg: msg,
+	}
+}
+
 func (t Task) ID() uint64 {
 	return t.id
 }

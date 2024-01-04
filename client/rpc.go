@@ -28,6 +28,7 @@ type RPC struct {
 	logger logger.Logger
 }
 
+// NewRPC creates new RPC client
 func NewRPC(
 	logger logger.Logger,
 	endpoints []string,
@@ -89,6 +90,7 @@ func (c RPC) GetAccount(account sdk.AccAddress) (client.Account, error) {
 	return maxSeqAcc, nil
 }
 
+// GetResult find result from multiple clients
 func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
 	resultCh := make(chan *oracletypes.Result, len(c.nodes))
 	failCh := make(chan struct{}, len(c.nodes))
@@ -248,6 +250,11 @@ func (c RPC) QueryRequestFailureReason(id uint64) (string, error) {
 func (c RPC) GetSignature(_ uint64) ([]byte, error) {
 	// TODO: Implement when need TSS signature
 	return []byte{}, nil
+}
+
+func (c RPC) GetBalance(_ sdk.AccAddress) (uint64, error) {
+	// TODO: Implement
+	return 0, nil
 }
 
 func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key keyring.Info) (*sdk.TxResponse, error) {
