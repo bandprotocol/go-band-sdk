@@ -251,9 +251,15 @@ func (c RPC) QueryRequestFailureReason(id uint64) (string, error) {
 			for _, attr := range event.Attributes {
 				switch string(attr.Key) {
 				case oracletypes.AttributeKeyID:
-					rid, _ = strconv.ParseUint(string(attr.Value), 10, 64)
+					rid, err = strconv.ParseUint(string(attr.Value), 10, 64)
+					if err != nil {
+						return "", fmt.Errorf("unable to parse request id")
+					}
 				case oracletypes.AttributeKeyResolveStatus:
-					resolveStatus, _ = strconv.ParseUint(string(attr.Value), 10, 64)
+					resolveStatus, err = strconv.ParseUint(string(attr.Value), 10, 64)
+					if err != nil {
+						return "", fmt.Errorf("unable to parse resolve status")
+					}
 				case oracletypes.AttributeKeyReason:
 					reason = string(attr.Value)
 				}
