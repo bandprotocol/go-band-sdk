@@ -14,7 +14,6 @@ type Client interface {
 	GetTx(txHash string) (*sdk.TxResponse, error)
 	GetResult(id uint64) (*oracletypes.Result, error)
 	GetSignature(id uint64) ([]byte, error)
-	BlockSearch(query string, page *int, perPage *int, orderBy string) (*ctypes.ResultBlockSearch, error)
 	GetBlockResult(height int64) (*ctypes.ResultBlockResults, error)
 	QueryRequestFailureReason(id uint64) (string, error)
 	// TODO: Implement get balance for monitoring

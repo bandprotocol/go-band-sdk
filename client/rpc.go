@@ -72,7 +72,7 @@ func (c RPC) GetAccount(account sdk.AccAddress) (client.Account, error) {
 		}(node)
 	}
 
-	for _ = range c.nodes {
+	for range c.nodes {
 		select {
 		case acc := <-resultCh:
 			if maxSeqAcc == nil || acc.GetAccountNumber() > maxSeqAcc.GetAccountNumber() {
@@ -130,7 +130,7 @@ func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
 		case <-failCh:
 		}
 	}
-	// If cannot get result from all nodes return error
+	// If unable to get result from all nodes, return error
 	return nil, fmt.Errorf("failed to get result from all endpoints")
 }
 
@@ -163,37 +163,8 @@ func (c RPC) GetTx(txHash string) (*sdk.TxResponse, error) {
 		case <-failCh:
 		}
 	}
-	// If cannot get transaction from all nodes return error
+	// If unable to get transaction from all nodes, return error
 	return nil, fmt.Errorf("failed to find transaction from all endpoints")
-}
-
-func (c RPC) BlockSearch(query string, page *int, perPage *int, orderBy string) (*ctypes.ResultBlockSearch, error) {
-	resultCh := make(chan *ctypes.ResultBlockSearch)
-	failCh := make(chan struct{})
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	for _, node := range c.nodes {
-		go func(node *rpchttp.HTTP) {
-			blockResult, err := node.BlockSearch(ctx, query, page, perPage, orderBy)
-			if err != nil || blockResult.TotalCount == 0 {
-				failCh <- struct{}{}
-			} else {
-				resultCh <- blockResult
-			}
-		}(node)
-	}
-
-	for i := 0; i < len(c.nodes); i++ {
-		select {
-		case res := <-resultCh:
-			return res, nil
-		case <-failCh:
-		}
-	}
-
-	return nil, fmt.Errorf("failed to block search from all endpoints")
 }
 
 func (c RPC) GetBlockResult(height int64) (*ctypes.ResultBlockResults, error) {
@@ -227,7 +198,7 @@ func (c RPC) GetBlockResult(height int64) (*ctypes.ResultBlockResults, error) {
 
 func (c RPC) QueryRequestFailureReason(id uint64) (string, error) {
 	query := fmt.Sprintf("resolve.resolve_status=2 AND resolve.id=%v", id)
-	blockSearchResult, err := c.BlockSearch(query, nil, nil, "")
+	blockSearchResult, err := c.blockSearch(query, nil, nil, "")
 	if err != nil {
 		return "", err
 	}
@@ -274,7 +245,7 @@ func (c RPC) QueryRequestFailureReason(id uint64) (string, error) {
 	return "", fmt.Errorf("no reason found")
 }
 
-func (c RPC) GetSignature(id uint64) ([]byte, error) {
+func (c RPC) GetSignature(_ uint64) ([]byte, error) {
 	// TODO: Implement when need TSS signature
 	return []byte{}, nil
 }
@@ -376,4 +347,33 @@ Gas:
 	}
 	// If the tx cannot broadcast to all nodes, return an error
 	return nil, fmt.Errorf("failed to find transaction from all endpoints")
+}
+
+func (c RPC) blockSearch(query string, page *int, perPage *int, orderBy string) (*ctypes.ResultBlockSearch, error) {
+	resultCh := make(chan *ctypes.ResultBlockSearch)
+	failCh := make(chan struct{})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	for _, node := range c.nodes {
+		go func(node *rpchttp.HTTP) {
+			blockResult, err := node.BlockSearch(ctx, query, page, perPage, orderBy)
+			if err != nil || blockResult.TotalCount == 0 {
+				failCh <- struct{}{}
+			} else {
+				resultCh <- blockResult
+			}
+		}(node)
+	}
+
+	for i := 0; i < len(c.nodes); i++ {
+		select {
+		case res := <-resultCh:
+			return res, nil
+		case <-failCh:
+		}
+	}
+
+	return nil, fmt.Errorf("failed to block search from all endpoints")
 }
