@@ -26,3 +26,10 @@ jobs:
           version: v1.54
           working-directory: client
           args: --timeout=5m0s
+
+      - name: golangci-lint (utils)
+        uses: golangci/golangci-lint-action@v3
+        with:
+          version: v1.54
+          working-directory: utils
+          args: --timeout=5m0s

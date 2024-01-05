@@ -20,3 +20,7 @@ jobs:
       - name: Run tests (requester)
         working-directory: ./requester
         run: go test ./...
+
+      - name: Run tests (utils)
+        working-directory: ./utils
+        run: go test ./...
