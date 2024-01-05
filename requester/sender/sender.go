@@ -30,7 +30,7 @@ type Sender struct {
 func NewSender(
 	client client.Client,
 	logger logging.Logger,
-	RequestQueueCh chan Task,
+	requestQueueCh chan Task,
 	successChBufferSize int,
 	failureChBufferSize int,
 	gasPrice float64,
@@ -51,7 +51,7 @@ func NewSender(
 		logger:               logger,
 		freeKeys:             freeKeys,
 		gasPrice:             gasPrice,
-		requestQueueCh:       RequestQueueCh,
+		requestQueueCh:       requestQueueCh,
 		successfulRequestsCh: make(chan SuccessResponse, successChBufferSize),
 		failedRequestCh:      make(chan FailResponse, failureChBufferSize),
 	}, nil
@@ -110,11 +110,11 @@ func (s *Sender) request(task Task, key keyring.Info) {
 			s.logger.Warning("Sender", "request ID(%d) failed with code %d", task.ID(), resp.Code)
 			s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf(resp.RawLog)}
 			return
-		} else {
-			s.logger.Info("Sender", "request ID(%d) has been confirmed", task.ID())
-			s.successfulRequestsCh <- SuccessResponse{task, *resp}
-			return
 		}
+
+		s.logger.Info("Sender", "request ID(%d) has been confirmed", task.ID())
+		s.successfulRequestsCh <- SuccessResponse{task, *resp}
+		return
 	}
 	s.logger.Warning("Sender", "request ID(%d) has timed out", task.ID())
 	s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf("timed out")}
