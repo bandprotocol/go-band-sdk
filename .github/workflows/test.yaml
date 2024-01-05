@@ -1,0 +1,22 @@
+name: Tests
+on: push
+
+jobs:
+  go-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.20
+
+      - name: Run tests (client)
+        working-directory: ./client
+        run: go test ./...
+
+      - name: Run tests (requester)
+        working-directory: ./requester
+        run: go test ./...
