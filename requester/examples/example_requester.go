@@ -16,7 +16,7 @@ import (
 	"github.com/bandprotocol/go-band-sdk/requester/sender"
 	"github.com/bandprotocol/go-band-sdk/requester/sender/handlers/parser"
 	"github.com/bandprotocol/go-band-sdk/requester/watcher/request"
-	"github.com/bandprotocol/go-band-sdk/utils/logger"
+	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 	band.SetBech32AddressPrefixesAndBip44CoinTypeAndSeal(appConfig)
 
 	// Setup common
-	l := logger.NewLogrus("info")
+	l := logging.NewLogrus("info")
 	kb := keyring.NewInMemory()
 	mnemonic := "child across insect stone enter jacket bitter citizen inch wear breeze adapt come attend vehicle caught wealth junk cloth velvet wheat curious prize panther"
 	hdPath := hd.CreateHDPath(band.Bip44CoinType, 0, 0)

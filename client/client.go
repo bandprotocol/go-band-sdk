@@ -8,7 +8,6 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
-// TODO: Implement get balance for monitoring
 type Client interface {
 	GetAccount(account sdk.AccAddress) (client.Account, error)
 	GetTx(txHash string) (*sdk.TxResponse, error)

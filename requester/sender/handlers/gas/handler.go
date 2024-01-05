@@ -8,17 +8,17 @@ import (
 
 	"github.com/bandprotocol/go-band-sdk/requester/middleware"
 	"github.com/bandprotocol/go-band-sdk/requester/sender"
-	"github.com/bandprotocol/go-band-sdk/utils/logger"
+	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
 
 var _ middleware.Handler[sender.FailResponse, sender.Task] = &InsufficientPrepareGasHandler{}
 
 type InsufficientPrepareGasHandler struct {
 	gasMultiplier float64
-	logger        logger.Logger
+	logger        logging.Logger
 }
 
-func NewInsufficientPrepareGasHandler(gasMultiplier float64, logger logger.Logger) *InsufficientPrepareGasHandler {
+func NewInsufficientPrepareGasHandler(gasMultiplier float64, logger logging.Logger) *InsufficientPrepareGasHandler {
 	return &InsufficientPrepareGasHandler{gasMultiplier: gasMultiplier, logger: logger}
 }
 

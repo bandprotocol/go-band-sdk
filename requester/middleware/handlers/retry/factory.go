@@ -4,16 +4,16 @@ import (
 	"sync"
 
 	"github.com/bandprotocol/go-band-sdk/requester/types"
-	"github.com/bandprotocol/go-band-sdk/utils/logger"
+	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
 
 type HandlerFactory struct {
 	counter Counter
 	maxTry  uint64
-	logger  logger.Logger
+	logger  logging.Logger
 }
 
-func NewHandlerFactory(maxTry uint64, logger logger.Logger) *HandlerFactory {
+func NewHandlerFactory(maxTry uint64, logger logging.Logger) *HandlerFactory {
 	return &HandlerFactory{
 		counter: Counter{cache: sync.Map{}},
 		maxTry:  maxTry,

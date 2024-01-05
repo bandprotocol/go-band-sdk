@@ -8,12 +8,12 @@ import (
 
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
-	"github.com/bandprotocol/go-band-sdk/utils/logger"
+	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
 
 type Watcher struct {
 	client client.Client
-	logger logger.Logger
+	logger logging.Logger
 
 	pollingDelay time.Duration
 	timeout      time.Duration
@@ -26,7 +26,7 @@ type Watcher struct {
 
 func NewWatcher(
 	client client.Client,
-	logger logger.Logger,
+	logger logging.Logger,
 	pollingDelay time.Duration,
 	timeout time.Duration,
 	watchQueueCh chan Task,

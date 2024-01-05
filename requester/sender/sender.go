@@ -8,12 +8,12 @@ import (
 
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
-	"github.com/bandprotocol/go-band-sdk/utils/logger"
+	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
 
 type Sender struct {
 	client client.Client
-	logger logger.Logger
+	logger logging.Logger
 
 	freeKeys chan keyring.Info
 	gasPrice float64
@@ -29,7 +29,7 @@ type Sender struct {
 
 func NewSender(
 	client client.Client,
-	logger logger.Logger,
+	logger logging.Logger,
 	RequestQueueCh chan Task,
 	successChBufferSize int,
 	failureChBufferSize int,

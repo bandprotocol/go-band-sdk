@@ -5,11 +5,11 @@ import (
 
 	"github.com/bandprotocol/go-band-sdk/requester/middleware"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
-	"github.com/bandprotocol/go-band-sdk/utils/logger"
+	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
 
 type CounterHandler[T types.Task, U any] struct {
-	logger  logger.Logger
+	logger  logging.Logger
 	counter *Counter
 	maxTry  uint64
 }
@@ -28,7 +28,7 @@ func (c *CounterHandler[T, U]) Handle(ctx T, next middleware.HandlerFunc[T, U]) 
 }
 
 type ResolverHandler[T types.Task, U any] struct {
-	logger  logger.Logger
+	logger  logging.Logger
 	counter *Counter
 }
 

@@ -12,8 +12,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-
-	"github.com/bandprotocol/go-band-sdk/utils/logger"
 )
 
 var _ Client = &RPC{}
@@ -25,12 +23,12 @@ type RPC struct {
 	nodes     []*rpchttp.HTTP
 	keyring   keyring.Keyring
 
-	logger logger.Logger
+	logger logging.Logger
 }
 
 // NewRPC creates new RPC client
 func NewRPC(
-	logger logger.Logger,
+	logger logging.Logger,
 	endpoints []string,
 	chainID string,
 	timeout string,
