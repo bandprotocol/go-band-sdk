@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for your interest in contributing!  You can contribute to go-band-sdk in many ways.
+Thank you for your interest in contributing! You can contribute to go-band-sdk in many ways.
 
 1. **Issues**
     
