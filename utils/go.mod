@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/kyokomi/emoji v2.2.4+incompatible
 	github.com/sirupsen/logrus v1.9.3
+	go.uber.org/mock v0.4.0
 )
 
 require (

@@ -61,6 +61,7 @@ func (w *Watcher) Start() {
 func (w *Watcher) watch(task Task) {
 	et := time.Now().Add(w.timeout)
 	for time.Now().Before(et) {
+		print("client called")
 		res, err := w.client.GetResult(task.RequestID)
 		if err != nil {
 			time.Sleep(w.pollingDelay)

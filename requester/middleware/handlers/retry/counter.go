@@ -8,6 +8,10 @@ type Counter struct {
 	cache sync.Map
 }
 
+func NewCounter() *Counter {
+	return &Counter{sync.Map{}}
+}
+
 func (c *Counter) Inc(id uint64) {
 	v, ok := c.cache.Load(id)
 	if !ok {
@@ -24,7 +28,7 @@ func (c *Counter) Clear(id uint64) {
 func (c *Counter) Peek(id uint64) (uint64, bool) {
 	v, ok := c.cache.Load(id)
 	if !ok {
-		v = 0
+		v = uint64(0)
 	}
 	return v.(uint64), ok
 }

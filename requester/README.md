@@ -10,7 +10,7 @@ requests to BandChain, a decentralized oracle network in blockchain technology.
   You can create new requests and submit them to the BandChain with just a few lines of code.
 
 - **Response Handling:** Besides handling requests, the `requester` package also provides tools to manage the responses
-  coming from BandChain. 
+  coming from BandChain.
   This includes error handling, retry logic, and more.
 
 ## Usage
@@ -62,15 +62,29 @@ and `w.FailedRequestsCh()` respectively.
 To handle the flow of information between the Sender and Watcher and to handle cases where we want to implement
 any logic in between the two systems, we can implement middleware in between the system to do so.
 
+The middleware consists of two parts: The handler stack and the parser.
+- The handler stack is a sequence of handlers which can be used to filter out requests or do any sort of processing,
+logging, etc 
+- The parser is used to parse the input from the middleware into a desired output.
+
+```mermaid
+graph LR
+    A[In] --> B
+    subgraph Handler Stack
+        B[Handler 0] -.-> C[Handler N]
+    end
+    C --> D[Parser] --> E[Out]
+```
+
 For example, the graph below shows a possible middleware flow where we want to send a request and have some logic in
 retrying if the request fails for a specific reason.
 
 ```mermaid
 graph LR
-    IN -- in --> A[Sender] -- success --> B[SenderSuccessMiddleware] -- out --> C[Watcher]
+    In -- in --> A[Sender] -- success --> B[SenderSuccessMiddleware] -- out --> C[Watcher]
     A -- failed --> D[SenderFailureMiddleware]
     D -- out --> A
-    C -- success --> E[WatcherSuccessMiddleware] -- out --> OUT
+    C -- success --> E[WatcherSuccessMiddleware] -- out --> Out
     C -- failure --> F[WatcherFailureMiddleware] -- out --> A
 ```
 
