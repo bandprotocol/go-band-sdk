@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"go.uber.org/mock/gomock"
+	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 
 	"github.com/bandprotocol/go-band-sdk/requester/middleware/handlers/retry"
 	"github.com/bandprotocol/go-band-sdk/requester/sender"
@@ -19,13 +19,10 @@ func setupFactory(maxTry uint64) *retry.HandlerFactory {
 }
 
 func TestCounterHandler(t *testing.T) {
-	ctrl := gomock.NewController(t)
 	factory := setupFactory(3)
 	handler := retry.NewCounterHandler[types.Task, types.Task](factory)
 
-	mockTask := types.NewMockTask(ctrl)
-	mockTask := sender.NewTask(uint64(1), nil)
-	mockTask.EXPECT().ID().Return(uint64(1)).AnyTimes()
+	mockTask := sender.NewTask(uint64(1), oracletypes.MsgRequestData{})
 
 	_, err := handler.Handle(
 		mockTask, func(ctx types.Task) (types.Task, error) {
@@ -37,39 +34,40 @@ func TestCounterHandler(t *testing.T) {
 }
 
 func TestCounterHandlerWithMaxRetry(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	factory := setupFactory(1, ctrl)
+	factory := setupFactory(1)
 	handler := retry.NewCounterHandler[types.Task, types.Task](factory)
 
-	mockTask := types.NewMockTask(ctrl)
-	mockTask.EXPECT().ID().Return(uint64(1)).AnyTimes()
+	mockTask := sender.NewTask(uint64(1), oracletypes.MsgRequestData{})
 
 	parser := func(ctx types.Task) (types.Task, error) {
 		return ctx, nil
 	}
 
-	handler.Handle(mockTask, parser)
 	_, err := handler.Handle(mockTask, parser)
-
+	assert.NoErrorf(t, err, "expected no error, got %v", err)
+	// Should fail as max retry exceeded
+	_, err = handler.Handle(mockTask, parser)
 	assert.Errorf(t, err, "expected error, got %v", err)
 }
 
 func TestResolverHandler(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	factory := setupFactory(1, ctrl)
+	factory := setupFactory(1)
 	counter := retry.NewCounterHandler[types.Task, types.Task](factory)
 	resolver := retry.NewResolverHandler[types.Task, types.Task](factory)
 
-	mockTask := types.
-		mockTask.EXPECT().ID().Return(uint64(1)).AnyTimes()
+	mockTask := sender.NewTask(uint64(1), oracletypes.MsgRequestData{})
 
 	parser := func(ctx types.Task) (types.Task, error) {
 		return ctx, nil
 	}
 
-	counter.Handle(mockTask, parser)
-	resolver.Handle(mockTask, parser)
 	_, err := counter.Handle(mockTask, parser)
+	assert.NoErrorf(t, err, "expected no error, got %v", err)
+	// Resolver should clear current counter for the task
+	_, err = resolver.Handle(mockTask, parser)
+	assert.NoErrorf(t, err, "expected no error, got %v", err)
 
+	// Should pass as counter is cleared
+	_, err = counter.Handle(mockTask, parser)
 	assert.NoErrorf(t, err, "expected no error, got %v", err)
 }

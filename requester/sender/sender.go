@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
@@ -88,9 +89,17 @@ func (s *Sender) request(task Task, key keyring.Info) {
 
 	// Attempt to send the request
 	resp, err := s.client.SendRequest(&task.Msg, s.gasPrice, key)
-	if resp.Code != 0 || err != nil {
+	// Handle error
+	if err != nil {
+		s.logger.Warning("Sender", "failed to broadcast request ID(%d) with error: %s", task.ID(), err.Error())
+		s.failedRequestCh <- FailResponse{task, sdk.TxResponse{}, types.ErrBroadcastFailed.Wrapf(err.Error())}
+		return
+	} else if resp != nil && resp.Code != 0 {
 		s.logger.Warning("Sender", "failed to broadcast request ID(%d) with code %d", task.ID(), resp.Code)
-		s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf(err.Error())}
+		s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed}
+		return
+	} else if resp == nil {
+		s.failedRequestCh <- FailResponse{task, sdk.TxResponse{}, types.ErrUnknown}
 		return
 	}
 
@@ -100,7 +109,7 @@ func (s *Sender) request(task Task, key keyring.Info) {
 	// Poll for tx confirmation
 	et := time.Now().Add(s.timeout)
 	for !time.Now().Before(et) {
-		resp, err := s.client.GetTx(txHash)
+		resp, err = s.client.GetTx(txHash)
 		if err != nil {
 			time.Sleep(s.pollingDelay)
 			continue

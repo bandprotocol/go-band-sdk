@@ -1,6 +1,8 @@
 module github.com/bandprotocol/go-band-sdk/utils
 
-go 1.20
+go 1.21
+
+toolchain go1.21.6
 
 require (
 	github.com/kyokomi/emoji v2.2.4+incompatible

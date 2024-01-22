@@ -1,6 +1,8 @@
 module github.com/bandprotocol/go-band-sdk/requester
 
-go 1.20
+go 1.21
+
+toolchain go1.21.6
 
 require (
 	github.com/bandprotocol/chain/v2 v2.5.4
@@ -63,7 +65,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.1.2 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/gorilla/mux v1.8.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect

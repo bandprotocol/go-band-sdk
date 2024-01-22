@@ -1,6 +1,8 @@
 module github.com/bandprotocol/go-band-sdk/client
 
-go 1.20
+go 1.21
+
+toolchain go1.21.6
 
 require (
 	github.com/bandprotocol/chain/v2 v2.5.4
