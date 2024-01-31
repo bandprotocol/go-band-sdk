@@ -14,10 +14,10 @@ import (
 	"go.uber.org/mock/gomock"
 
 	"github.com/bandprotocol/go-band-sdk/client"
-	"github.com/bandprotocol/go-band-sdk/client/mock"
+	mockclient "github.com/bandprotocol/go-band-sdk/client/mock"
 	"github.com/bandprotocol/go-band-sdk/requester/sender"
 	"github.com/bandprotocol/go-band-sdk/utils/logging"
-	mock2 "github.com/bandprotocol/go-band-sdk/utils/logging/mock"
+	mocklogging "github.com/bandprotocol/go-band-sdk/utils/logging/mock"
 )
 
 func SetupSender(cl client.Client, l logging.Logger, reqCh chan sender.Task) (*sender.Sender, error) {
@@ -33,7 +33,7 @@ func TestSenderWithSuccess(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	// Mock dependencies
-	mockClient := mock.NewMockClient(ctrl)
+	mockClient := mockclient.NewMockClient(ctrl)
 	mockResult := sdk.TxResponse{
 		Height:    0,
 		TxHash:    "abc",
@@ -53,7 +53,7 @@ func TestSenderWithSuccess(t *testing.T) {
 	mockClient.EXPECT().SendRequest(gomock.Any(), 1.0, gomock.Any()).Return(&mockResult, nil).Times(1)
 	mockClient.EXPECT().GetTx("abc").Return(&mockResult, nil).Times(1)
 
-	mockLogger := mock2.NewLogger()
+	mockLogger := mocklogging.NewLogger()
 	mockTask := sender.NewTask(1, types.MsgRequestData{})
 
 	// Create channels
@@ -89,7 +89,7 @@ func TestSenderWithFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	// Mock dependencies
-	mockClient := mock.NewMockClient(ctrl)
+	mockClient := mockclient.NewMockClient(ctrl)
 	mockResult := sdk.TxResponse{
 		Height:    0,
 		TxHash:    "abc",
@@ -108,7 +108,7 @@ func TestSenderWithFailure(t *testing.T) {
 
 	mockClient.EXPECT().SendRequest(gomock.Any(), 1.0, gomock.Any()).Return(&mockResult, nil).Times(1)
 
-	mockLogger := mock2.NewLogger()
+	mockLogger := mocklogging.NewLogger()
 	mockTask := sender.NewTask(1, types.MsgRequestData{})
 
 	// Create channels
@@ -144,11 +144,11 @@ func TestSenderWithClientError(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
 	// Mock dependencies
-	mockClient := mock.NewMockClient(ctrl)
+	mockClient := mockclient.NewMockClient(ctrl)
 
 	mockClient.EXPECT().SendRequest(gomock.Any(), 1.0, gomock.Any()).Return(nil, fmt.Errorf("error")).Times(1)
 
-	mockLogger := mock2.NewLogger()
+	mockLogger := mocklogging.NewLogger()
 	mockTask := sender.NewTask(1, types.MsgRequestData{})
 
 	// Create channels

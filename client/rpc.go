@@ -16,6 +16,8 @@ import (
 	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
 
+// TODO: properly implement error channels
+
 var _ Client = &RPC{}
 
 // RPC implements Clients by using multiple RPC nodes
@@ -59,8 +61,8 @@ func NewRPC(
 func (c RPC) GetAccount(account sdk.AccAddress) (client.Account, error) {
 	var maxSeqAcc client.Account
 
-	resultCh := make(chan client.Account)
-	failCh := make(chan struct{})
+	resultCh := make(chan client.Account, len(c.nodes))
+	failCh := make(chan struct{}, len(c.nodes))
 
 	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
@@ -124,7 +126,7 @@ func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
 		}(node)
 	}
 
-	for i := 0; i < len(c.nodes); i++ {
+	for range c.nodes {
 		select {
 		case res := <-resultCh:
 			// Return the first result that we found
@@ -289,7 +291,7 @@ func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key 
 	gas := uint64(0)
 
 Gas:
-	for i := 0; i < len(c.nodes); i++ {
+	for range c.nodes {
 		select {
 		case gas = <-gasCh:
 			// Return the first result that we found
@@ -344,7 +346,7 @@ Gas:
 		}(node)
 	}
 
-	for i := 0; i < len(c.nodes); i++ {
+	for range c.nodes {
 		select {
 		case res := <-resultCh:
 			// Return the first tx response that we found
@@ -374,7 +376,7 @@ func (c RPC) blockSearch(query string, page *int, perPage *int, orderBy string) 
 		}(node)
 	}
 
-	for i := 0; i < len(c.nodes); i++ {
+	for range c.nodes {
 		select {
 		case res := <-resultCh:
 			return res, nil
