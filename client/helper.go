@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"time"
 
 	band "github.com/bandprotocol/chain/v2/app"
@@ -18,11 +20,11 @@ import (
 	libclient "github.com/tendermint/tendermint/rpc/jsonrpc/client"
 )
 
-func NewClientCtx(chainId string) client.Context {
+func NewClientCtx(chainID string) client.Context {
 	cfg := band.MakeEncodingConfig()
 
 	return client.Context{}.
-		WithChainID(chainId).
+		WithChainID(chainID).
 		WithAccountRetriever(authtypes.AccountRetriever{}).
 		WithBroadcastMode(flags.BroadcastSync).
 		WithCodec(cfg.Marshaler).
@@ -52,9 +54,9 @@ func newRPCClient(addr, timeout string) (*rpchttp.HTTP, error) {
 	return rpcClient, nil
 }
 
-func createTxFactory(chainId, gasPrice string, keyring keyring.Keyring) tx.Factory {
+func createTxFactory(chainID, gasPrice string, keyring keyring.Keyring) tx.Factory {
 	return tx.Factory{}.
-		WithChainID(chainId).
+		WithChainID(chainID).
 		WithTxConfig(band.MakeEncodingConfig().TxConfig).
 		WithGasAdjustment(1.1).
 		WithGasPrices(gasPrice).
@@ -78,4 +80,18 @@ func getRequest(clientCtx client.Context, id uint64) (*oracletypes.QueryRequestR
 func estimateGas(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (uint64, error) {
 	_, gas, err := tx.CalculateGas(clientCtx, txf, msgs...)
 	return gas, err
+}
+
+func GetRequestID(events []sdk.StringEvent) (uint64, error) {
+	for _, event := range events {
+		if event.Type == oracletypes.EventTypeRequest {
+			rid, err := strconv.ParseUint(event.Attributes[0].Value, 10, 64)
+			if err != nil {
+				return 0, err
+			}
+
+			return rid, nil
+		}
+	}
+	return 0, fmt.Errorf("cannot find request id")
 }

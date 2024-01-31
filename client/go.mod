@@ -1,4 +1,4 @@
-module github.com/bandprotocol/go-band-sdk/requester
+module github.com/bandprotocol/go-band-sdk/client
 
 go 1.21
 
@@ -6,11 +6,10 @@ toolchain go1.21.6
 
 require (
 	github.com/bandprotocol/chain/v2 v2.5.4
-	github.com/bandprotocol/go-band-sdk/client v0.0.1
 	github.com/bandprotocol/go-band-sdk/utils v0.0.1
-	github.com/bandprotocol/go-owasm v0.2.3
 	github.com/cosmos/cosmos-sdk v0.45.16
 	github.com/stretchr/testify v1.8.4
+	github.com/tendermint/tendermint v0.34.29
 	go.uber.org/mock v0.4.0
 )
 
@@ -24,6 +23,7 @@ require (
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
 	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
+	github.com/bandprotocol/go-owasm v0.2.3 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/speakeasy v0.1.1-0.20220910012023-760eaf8b6816 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
@@ -117,7 +117,6 @@ require (
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect
-	github.com/tendermint/tendermint v0.34.29 // indirect
 	github.com/tendermint/tm-db v0.6.7 // indirect
 	github.com/tidwall/btree v1.5.0 // indirect
 	github.com/zondax/hid v0.9.1 // indirect
@@ -140,7 +139,6 @@ require (
 )
 
 replace (
-	github.com/bandprotocol/go-band-sdk/client => ../client
 	github.com/bandprotocol/go-band-sdk/utils => ../utils
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	// use cometbft

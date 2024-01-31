@@ -1,168 +1,130 @@
 package sender
 
 import (
+	"encoding/json"
 	"time"
 
-	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	"github.com/bandprotocol/go-band-sdk/requester/client"
+	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
-	"github.com/bandprotocol/go-band-sdk/utils"
+	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
 
 type Sender struct {
 	client client.Client
-	logger utils.Logger
+	logger logging.Logger
 
-	GasPrices        string
-	MaxTry           uint64
-	RpcPollInterval  time.Duration
-	BroadcastTimeout time.Duration
+	freeKeys chan keyring.Info
+	gasPrice float64
 
-	FreeKeys chan keyring.Info
+	timeout      time.Duration
+	pollingDelay time.Duration
 
 	// Channel
-	Requestc        <-chan types.Request
-	SuccessRequestc chan<- types.Response
-	FailedRequestc  chan<- types.FailedRequest
+	requestQueueCh       chan Task
+	successfulRequestsCh chan SuccessResponse
+	failedRequestCh      chan FailResponse
 }
 
 func NewSender(
 	client client.Client,
-	logger utils.Logger,
-	in <-chan types.Request,
-	out chan<- types.Response,
-	failed chan<- types.FailedRequest,
-	infos []keyring.Info,
-	pollInterval time.Duration,
-	broadcastTimeout time.Duration,
-) *Sender {
-	infoc := make(chan keyring.Info, len(infos))
+	logger logging.Logger,
+	RequestQueueCh chan Task,
+	successChBufferSize int,
+	failureChBufferSize int,
+	gasPrice float64,
+	kr keyring.Keyring,
+) (*Sender, error) {
+	infos, err := kr.List()
+	if err != nil {
+		return nil, err
+	}
 
+	freeKeys := make(chan keyring.Info, len(infos))
 	for _, info := range infos {
-		infoc <- info
+		freeKeys <- info
 	}
+
 	return &Sender{
-		client:           client,
-		logger:           logger,
-		Requestc:         in,
-		SuccessRequestc:  out,
-		FailedRequestc:   failed,
-		FreeKeys:         infoc,
-		RpcPollInterval:  pollInterval,
-		BroadcastTimeout: broadcastTimeout,
-	}
+		client:               client,
+		logger:               logger,
+		freeKeys:             freeKeys,
+		gasPrice:             gasPrice,
+		requestQueueCh:       RequestQueueCh,
+		successfulRequestsCh: make(chan SuccessResponse, successChBufferSize),
+		failedRequestCh:      make(chan FailResponse, failureChBufferSize),
+	}, nil
+}
+
+func (s *Sender) SuccessRequestsCh() <-chan SuccessResponse {
+	return s.successfulRequestsCh
+}
+
+func (s *Sender) FailedRequestsCh() <-chan FailResponse {
+	return s.failedRequestCh
 }
 
 func (s *Sender) Start() {
 	for {
-		req := <-s.Requestc
-		key := <-s.FreeKeys
-		go s.handleRequest(req, key)
+		req := <-s.requestQueueCh
+		key := <-s.freeKeys
+		// Assume all tasks can be marshalled
+		b, _ := json.Marshal(req.Msg)
+
+		s.logger.Info("Sender", "querying request with ID(%d) with payload: %s", req.ID(), string(b))
+
+		go s.request(req, key)
 	}
 }
 
-func (s *Sender) handleRequest(req types.Request, key keyring.Info) {
+func (s *Sender) request(task Task, key keyring.Info) {
 	defer func() {
-		s.FreeKeys <- key
+		s.freeKeys <- key
 	}()
 
-	// Mutate msg request to current sender should be ok for this use case
-	req.Msg.Sender = key.GetAddress().String()
+	// Mutate the msg's sender to the actual sender
+	task.Msg.Sender = key.GetAddress().String()
 
-	res, err := s.client.SendRequest(req.Msg, key)
+	// Attempt to send the request
+	resp, err := s.client.SendRequest(&task.Msg, s.gasPrice, key)
+	// Handle error
 	if err != nil {
-		// TODO: Fail request event
-		s.FailedRequestc <- types.NewFailedRequest(req, types.ErrBroadcast.Wrapf("with error %s", err))
-	}
-
-	// Check tx response from sync broadcast
-	if res.Code != 0 {
-		switch res.Codespace {
-		case sdkerrors.RootCodespace:
-			switch res.Code {
-			case sdkerrors.ErrInsufficientFee.ABCICode():
-				s.FailedRequestc <- types.NewFailedRequest(req, types.ErrInsufficientFunds)
-			default:
-				s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-			}
-		case oracletypes.ModuleName:
-			switch res.Code {
-			default:
-				s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-			}
-		default:
-			s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-		}
+		s.logger.Warning("Sender", "failed to broadcast request ID(%d) with error: %s", task.ID(), err.Error())
+		s.failedRequestCh <- FailResponse{task, sdk.TxResponse{}, types.ErrBroadcastFailed.Wrapf(err.Error())}
+		return
+	} else if resp != nil && resp.Code != 0 {
+		s.logger.Warning("Sender", "failed to broadcast request ID(%d) with code %d", task.ID(), resp.Code)
+		s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed}
+		return
+	} else if resp == nil {
+		s.failedRequestCh <- FailResponse{task, sdk.TxResponse{}, types.ErrUnknown}
 		return
 	}
 
-	txHash := res.TxHash
+	txHash := resp.TxHash
+	s.logger.Info("Sender", "successfully broadcasted request ID(%d) with tx_hash: %s", task.ID(), txHash)
 
-	start := time.Now()
-	for time.Since(start) < s.BroadcastTimeout {
-		time.Sleep(s.RpcPollInterval)
-
-		res, err := s.client.GetTx(txHash)
+	// Poll for tx confirmation
+	et := time.Now().Add(s.timeout)
+	for !time.Now().Before(et) {
+		resp, err = s.client.GetTx(txHash)
 		if err != nil {
-			s.logger.Debug("Failed to query tx with error", err.Error())
+			time.Sleep(s.pollingDelay)
 			continue
 		}
 
-		// TODO: Extract info for event
-		_, _, _, err = decodeTxFromRes(res)
-		if err != nil {
-			// It's not expected behavior
-			s.logger.Critical("Cannot decode tx", "Cannot decode Tx")
+		if resp.Code != 0 {
+			s.logger.Warning("Sender", "request ID(%d) failed with code %d", task.ID(), resp.Code)
+			s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf(resp.RawLog)}
+			return
+		} else {
+			s.logger.Info("Sender", "request ID(%d) has been confirmed", task.ID())
+			s.successfulRequestsCh <- SuccessResponse{task, *resp}
 			return
 		}
-
-		if res.Code != 0 {
-			switch res.Codespace {
-			case sdkerrors.RootCodespace:
-				switch res.Code {
-				case sdkerrors.ErrInsufficientFee.ABCICode():
-					s.FailedRequestc <- types.NewFailedRequest(req, types.ErrInsufficientFunds)
-				default:
-					s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-				}
-			case oracletypes.ModuleName:
-				switch res.Code {
-				default:
-					s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-				}
-			default:
-				s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-			}
-			return
-		}
-
-		rid, err := GetRequestID(res.Logs[0].Events)
-		if err != nil {
-			s.FailedRequestc <- types.NewFailedRequest(req, types.ErrUnexpected)
-			return
-		}
-
-		// dsFee, err := GetDsFee(res.Logs[0].Events)
-		// if err != nil {
-		// 	errDetail := fmt.Sprintf("Failed to parse DS fees on %s: %s", res.TxHash, err.Error())
-		// 	s.incidentService.TriggerIncident(common.ParseDSFeesFailed.With(errDetail))
-		// 	return
-		// }
-
-		// TODO: Add event request successful
-		s.logger.Info(
-			"Tx send successful",
-			"Tx Hash %s with request ID %d (Client ID: %s).",
-			txHash,
-			rid,
-			req.Msg.ClientID,
-		)
-
-		s.SuccessRequestc <- types.Response{Id: req.Id, TxHash: txHash, RequestId: rid}
 	}
-
-	s.FailedRequestc <- types.NewFailedRequest(req, types.ErrTxNotConfirm)
+	s.logger.Warning("Sender", "request ID(%d) has timed out", task.ID())
+	s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf("timed out")}
 }
