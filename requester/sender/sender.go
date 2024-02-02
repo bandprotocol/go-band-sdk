@@ -31,11 +31,13 @@ type Sender struct {
 func NewSender(
 	client client.Client,
 	logger logging.Logger,
+	kr keyring.Keyring,
+	gasPrice float64,
+	timeout time.Duration,
+	pollingDelay time.Duration,
 	RequestQueueCh chan Task,
 	successChBufferSize int,
 	failureChBufferSize int,
-	gasPrice float64,
-	kr keyring.Keyring,
 ) (*Sender, error) {
 	infos, err := kr.List()
 	if err != nil {
@@ -52,6 +54,8 @@ func NewSender(
 		logger:               logger,
 		freeKeys:             freeKeys,
 		gasPrice:             gasPrice,
+		timeout:              timeout,
+		pollingDelay:         pollingDelay,
 		requestQueueCh:       RequestQueueCh,
 		successfulRequestsCh: make(chan SuccessResponse, successChBufferSize),
 		failedRequestCh:      make(chan FailResponse, failureChBufferSize),
@@ -108,7 +112,7 @@ func (s *Sender) request(task Task, key keyring.Info) {
 
 	// Poll for tx confirmation
 	et := time.Now().Add(s.timeout)
-	for !time.Now().Before(et) {
+	for time.Now().Before(et) {
 		resp, err = s.client.GetTx(txHash)
 		if err != nil {
 			time.Sleep(s.pollingDelay)

@@ -26,7 +26,7 @@ func SetupSender(cl client.Client, l logging.Logger, reqCh chan sender.Task) (*s
 	hdPath := hd.CreateHDPath(band.Bip44CoinType, 0, 0)
 	kr.NewAccount("sender1", mnemonic, "", hdPath.String(), hd.Secp256k1)
 
-	return sender.NewSender(cl, l, reqCh, 1, 1, 1.0, kr)
+	return sender.NewSender(cl, l, kr, 1.0, 5*time.Second, 1*time.Second, reqCh, 1, 1)
 }
 
 func TestSenderWithSuccess(t *testing.T) {
