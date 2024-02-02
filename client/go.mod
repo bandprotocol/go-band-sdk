@@ -10,6 +10,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.45.16
 	github.com/stretchr/testify v1.8.4
 	github.com/tendermint/tendermint v0.34.29
+	go.uber.org/mock v0.4.0
 )
 
 require (
