@@ -22,13 +22,13 @@ We can set up a sender using the following code:
 ```go
 senderCh := make(chan sender.Task, 100)
 s, err := sender.NewSender(
-client,
-logger,
-senderCh,
-successChBufferSize,
-failureChBufferSize,
-gasPrice,
-keyring
+    client,
+    logger,
+    senderCh,
+    successChBufferSize,
+    failureChBufferSize,
+    gasPrice,
+    keyring
 )
 ```
 
@@ -45,12 +45,12 @@ We can set up a watcher using the following code:
 ```go
 watcherCh := make(chan watcher.Task, 100)
 w, err := watcher.NewWatcher(
-client,
-logger,
-pollingDelay,
-timeout,
-successChBufferSize,
-failureChBufferSize,
+    client,
+    logger,
+    pollingDelay,
+    timeout,
+    successChBufferSize,
+    failureChBufferSize,
 )
 ```
 
