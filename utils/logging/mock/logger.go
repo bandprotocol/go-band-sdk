@@ -4,9 +4,7 @@ import (
 	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
 
-var (
-	_ logging.Logger = &Logger{}
-)
+var _ logging.Logger = &Logger{}
 
 type Logger struct{}
 

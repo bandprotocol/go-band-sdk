@@ -7,9 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	_ Logger = &Logrus{}
-)
+var _ Logger = &Logrus{}
 
 type Logrus struct {
 	logger *logrus.Logger
