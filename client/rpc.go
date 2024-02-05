@@ -101,7 +101,6 @@ func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
 		go func(node *rpchttp.HTTP) {
 			c.logger.Debug("Getting request", "Try to get request from %s", node.Remote())
 			res, err := getRequest(c.ctx.WithClient(node), id)
-
 			if err != nil {
 				c.logger.Warning(
 					"Fail to get request from single endpoint",
