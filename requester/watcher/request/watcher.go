@@ -60,6 +60,7 @@ func (w *Watcher) Start() {
 
 func (w *Watcher) watch(task Task) {
 	et := time.Now().Add(w.timeout)
+
 	for time.Now().Before(et) {
 		res, err := w.client.GetResult(task.RequestID)
 		if err != nil {
@@ -71,7 +72,6 @@ func (w *Watcher) watch(task Task) {
 		case oracletypes.RESOLVE_STATUS_OPEN:
 			// if request ID found, poll till results gotten or timeout
 			time.Sleep(w.pollingDelay)
-			break
 		case oracletypes.RESOLVE_STATUS_SUCCESS:
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
@@ -87,5 +87,6 @@ func (w *Watcher) watch(task Task) {
 			return
 		}
 	}
+
 	w.failedRequestCh <- FailResponse{task, oracletypes.Result{}, types.ErrTimedOut}
 }

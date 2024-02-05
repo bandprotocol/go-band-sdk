@@ -35,7 +35,7 @@ func NewSender(
 	gasPrice float64,
 	timeout time.Duration,
 	pollingDelay time.Duration,
-	RequestQueueCh chan Task,
+	requestQueueCh chan Task,
 	successChBufferSize int,
 	failureChBufferSize int,
 ) (*Sender, error) {
@@ -56,7 +56,7 @@ func NewSender(
 		gasPrice:             gasPrice,
 		timeout:              timeout,
 		pollingDelay:         pollingDelay,
-		requestQueueCh:       RequestQueueCh,
+		requestQueueCh:       requestQueueCh,
 		successfulRequestsCh: make(chan SuccessResponse, successChBufferSize),
 		failedRequestCh:      make(chan FailResponse, failureChBufferSize),
 	}, nil
@@ -123,11 +123,11 @@ func (s *Sender) request(task Task, key keyring.Info) {
 			s.logger.Warning("Sender", "request ID(%d) failed with code %d", task.ID(), resp.Code)
 			s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf(resp.RawLog)}
 			return
-		} else {
-			s.logger.Info("Sender", "request ID(%d) has been confirmed", task.ID())
-			s.successfulRequestsCh <- SuccessResponse{task, *resp}
-			return
 		}
+
+		s.logger.Info("Sender", "request ID(%d) has been confirmed", task.ID())
+		s.successfulRequestsCh <- SuccessResponse{task, *resp}
+		return
 	}
 	s.logger.Warning("Sender", "request ID(%d) has timed out", task.ID())
 	s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf("timed out")}

@@ -1,0 +1,34 @@
+linters:
+  enable:
+    - bodyclose
+    - dogsled
+    - goconst
+    - gocritic
+    - gofmt
+    - goimports
+    - revive
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - nakedret
+    - prealloc
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unused
+    - nolintlint
+
+issues:
+  max-same-issues: 50
+
+linters-settings:
+  dogsled:
+    max-blank-identifiers: 3
+  maligned:
+    suggest-new: true
+  golint:
+    min-confidence: 0
