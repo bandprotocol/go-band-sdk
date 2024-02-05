@@ -15,8 +15,8 @@ type Watcher struct {
 	client client.Client
 	logger logging.Logger
 
-	pollingDelay time.Duration
 	timeout      time.Duration
+	pollingDelay time.Duration
 
 	// Channel
 	watchQueueCh        <-chan Task
@@ -27,8 +27,8 @@ type Watcher struct {
 func NewWatcher(
 	client client.Client,
 	logger logging.Logger,
-	pollingDelay time.Duration,
 	timeout time.Duration,
+	pollingDelay time.Duration,
 	watchQueueCh chan Task,
 	successChBufferSize int,
 	failureChBufferSize int,
@@ -36,8 +36,8 @@ func NewWatcher(
 	return &Watcher{
 		client:              client,
 		logger:              logger,
-		pollingDelay:        pollingDelay,
 		timeout:             timeout,
+		pollingDelay:        pollingDelay,
 		watchQueueCh:        watchQueueCh,
 		successfulRequestCh: make(chan SuccessResponse, successChBufferSize),
 		failedRequestCh:     make(chan FailResponse, failureChBufferSize),

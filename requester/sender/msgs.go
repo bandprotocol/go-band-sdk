@@ -7,9 +7,11 @@ import (
 	"github.com/bandprotocol/go-band-sdk/requester/types"
 )
 
-var _ types.Task = &Task{}
-var _ types.SuccessResponse = &SuccessResponse{}
-var _ types.FailResponse = &FailResponse{}
+var (
+	_ types.Task            = &Task{}
+	_ types.SuccessResponse = &SuccessResponse{}
+	_ types.FailResponse    = &FailResponse{}
+)
 
 type Task struct {
 	id  uint64

@@ -37,7 +37,7 @@ func TestWatcher(t *testing.T) {
 
 	watcherCh := make(chan request.Task, 100)
 
-	w := request.NewWatcher(mockClient, mockLogger, 3*time.Second, 60*time.Second, watcherCh, 100, 100)
+	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
 	go w.Start()
 
 	task := request.Task{
@@ -60,9 +60,9 @@ func TestWatcher(t *testing.T) {
 
 	for {
 		select {
-		case _ = <-w.SuccessfulRequestCh():
+		case <-w.SuccessfulRequestCh():
 			return
-		case _ = <-w.FailedRequestCh():
+		case <-w.FailedRequestCh():
 			t.Errorf("expected success, not failure")
 			return
 		case <-timeout:
@@ -98,7 +98,7 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 
 	watcherCh := make(chan request.Task, 100)
 
-	w := request.NewWatcher(mockClient, mockLogger, 1*time.Second, 5*time.Second, watcherCh, 100, 100)
+	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
 	go w.Start()
 
 	msg := oracletypes.MsgRequestData{
@@ -119,10 +119,10 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 
 	for {
 		select {
-		case _ = <-w.SuccessfulRequestCh():
+		case <-w.SuccessfulRequestCh():
 			t.Errorf("expected failure, not success")
 			return
-		case _ = <-w.FailedRequestCh():
+		case <-w.FailedRequestCh():
 			return
 		case <-timeout:
 			t.Errorf("timed out")
@@ -143,7 +143,7 @@ func TestWatcherWithTimeout(t *testing.T) {
 
 	watcherCh := make(chan request.Task, 100)
 
-	w := request.NewWatcher(mockClient, mockLogger, 1*time.Second, 5*time.Second, watcherCh, 100, 100)
+	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
 	go w.Start()
 
 	msg := oracletypes.MsgRequestData{
@@ -164,10 +164,10 @@ func TestWatcherWithTimeout(t *testing.T) {
 
 	for {
 		select {
-		case _ = <-w.SuccessfulRequestCh():
+		case <-w.SuccessfulRequestCh():
 			t.Errorf("expected failure due to timeout")
 			return
-		case _ = <-w.FailedRequestCh():
+		case <-w.FailedRequestCh():
 			return
 		case <-timeout:
 			t.Errorf("timed out")

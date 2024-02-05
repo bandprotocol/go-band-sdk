@@ -24,9 +24,12 @@ func SetupSender(cl client.Client, l logging.Logger, reqCh chan sender.Task) (*s
 	kr := keyring.NewInMemory()
 	mnemonic := "child across insect stone enter jacket bitter citizen inch wear breeze adapt come attend vehicle caught wealth junk cloth velvet wheat curious prize panther"
 	hdPath := hd.CreateHDPath(band.Bip44CoinType, 0, 0)
-	kr.NewAccount("sender1", mnemonic, "", hdPath.String(), hd.Secp256k1)
+	_, err := kr.NewAccount("sender1", mnemonic, "", hdPath.String(), hd.Secp256k1)
+	if err != nil {
+		return nil, err
+	}
 
-	return sender.NewSender(cl, l, reqCh, 1, 1, 1.0, kr)
+	return sender.NewSender(cl, l, kr, 1.0, 5*time.Second, 1*time.Second, reqCh, 1, 1)
 }
 
 func TestSenderWithSuccess(t *testing.T) {
@@ -73,9 +76,9 @@ func TestSenderWithSuccess(t *testing.T) {
 	timeout := time.After(10 * time.Second)
 	for {
 		select {
-		case _ = <-s.SuccessRequestsCh():
+		case <-s.SuccessRequestsCh():
 			return
-		case _ = <-s.FailedRequestsCh():
+		case <-s.FailedRequestsCh():
 			t.Errorf("expected a successful response")
 		case <-timeout:
 			t.Errorf("timed out")
@@ -128,9 +131,9 @@ func TestSenderWithFailure(t *testing.T) {
 	timeout := time.After(10 * time.Second)
 	for {
 		select {
-		case _ = <-s.SuccessRequestsCh():
+		case <-s.SuccessRequestsCh():
 			t.Errorf("expected a failed response")
-		case _ = <-s.FailedRequestsCh():
+		case <-s.FailedRequestsCh():
 			return
 		case <-timeout:
 			t.Errorf("timed out")
@@ -168,9 +171,9 @@ func TestSenderWithClientError(t *testing.T) {
 	timeout := time.After(10 * time.Second)
 	for {
 		select {
-		case _ = <-s.SuccessRequestsCh():
+		case <-s.SuccessRequestsCh():
 			t.Errorf("expected a failed response")
-		case _ = <-s.FailedRequestsCh():
+		case <-s.FailedRequestsCh():
 			return
 		case <-timeout:
 			t.Errorf("timed out")
