@@ -11,7 +11,6 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    - lll
     - misspell
     - nakedret
     - prealloc
@@ -32,3 +31,17 @@ linters-settings:
     suggest-new: true
   golint:
     min-confidence: 0
+  nolintlint:
+    allow-unused: false
+    allow-leading-space: true
+    require-explanation: false
+    require-specific: false
+  revive:
+    rules:
+      - name: unused-parameter
+        disabled: true
+  gocritic:
+    disabled-checks:
+      - regexpMust
+      - appendAssign
+      - ifElseChain

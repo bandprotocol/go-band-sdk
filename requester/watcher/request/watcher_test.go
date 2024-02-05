@@ -60,9 +60,9 @@ func TestWatcher(t *testing.T) {
 
 	for {
 		select {
-		case _ = <-w.SuccessfulRequestCh():
+		case <-w.SuccessfulRequestCh():
 			return
-		case _ = <-w.FailedRequestCh():
+		case <-w.FailedRequestCh():
 			t.Errorf("expected success, not failure")
 			return
 		case <-timeout:
@@ -119,10 +119,10 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 
 	for {
 		select {
-		case _ = <-w.SuccessfulRequestCh():
+		case <-w.SuccessfulRequestCh():
 			t.Errorf("expected failure, not success")
 			return
-		case _ = <-w.FailedRequestCh():
+		case <-w.FailedRequestCh():
 			return
 		case <-timeout:
 			t.Errorf("timed out")
@@ -164,10 +164,10 @@ func TestWatcherWithTimeout(t *testing.T) {
 
 	for {
 		select {
-		case _ = <-w.SuccessfulRequestCh():
+		case <-w.SuccessfulRequestCh():
 			t.Errorf("expected failure due to timeout")
 			return
-		case _ = <-w.FailedRequestCh():
+		case <-w.FailedRequestCh():
 			return
 		case <-timeout:
 			t.Errorf("timed out")
