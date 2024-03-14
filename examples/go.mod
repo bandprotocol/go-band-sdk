@@ -4,9 +4,9 @@ go 1.21.6
 
 require (
 	github.com/bandprotocol/chain/v2 v2.5.4
-	github.com/bandprotocol/go-band-sdk/client v0.0.1
+	github.com/bandprotocol/go-band-sdk/client v1.0.1
 	github.com/bandprotocol/go-band-sdk/requester v0.0.0-20240205043457-94371a27a564
-	github.com/bandprotocol/go-band-sdk/utils v0.0.1
+	github.com/bandprotocol/go-band-sdk/utils v1.0.1
 	github.com/cosmos/cosmos-sdk v0.45.16
 )
 

@@ -6,7 +6,7 @@ toolchain go1.21.6
 
 require (
 	github.com/bandprotocol/chain/v2 v2.5.4
-	github.com/bandprotocol/go-band-sdk/utils v0.0.1
+	github.com/bandprotocol/go-band-sdk/utils v1.0.1
 	github.com/cosmos/cosmos-sdk v0.45.16
 	github.com/stretchr/testify v1.8.4
 	github.com/tendermint/tendermint v0.34.29
