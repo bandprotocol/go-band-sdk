@@ -1,16 +1,13 @@
-module github.com/bandprotocol/go-band-sdk/client
+module github.com/bandprotocol/go-band-sdk/examples
 
-go 1.21
-
-toolchain go1.21.6
+go 1.21.6
 
 require (
 	github.com/bandprotocol/chain/v2 v2.5.4
+	github.com/bandprotocol/go-band-sdk/client v1.0.1
+	github.com/bandprotocol/go-band-sdk/requester v0.0.0-20240205043457-94371a27a564
 	github.com/bandprotocol/go-band-sdk/utils v1.0.1
 	github.com/cosmos/cosmos-sdk v0.45.16
-	github.com/stretchr/testify v1.8.4
-	github.com/tendermint/tendermint v0.34.29
-	go.uber.org/mock v0.4.0
 )
 
 require (
@@ -114,9 +111,11 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.14.0 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect
+	github.com/tendermint/tendermint v0.34.29 // indirect
 	github.com/tendermint/tm-db v0.6.7 // indirect
 	github.com/tidwall/btree v1.5.0 // indirect
 	github.com/zondax/hid v0.9.1 // indirect
@@ -139,6 +138,7 @@ require (
 )
 
 replace (
+	github.com/bandprotocol/go-band-sdk/client => ../client
 	github.com/bandprotocol/go-band-sdk/utils => ../utils
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	// use cometbft
