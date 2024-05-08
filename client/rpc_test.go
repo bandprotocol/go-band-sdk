@@ -7,6 +7,9 @@ import (
 
 	band "github.com/bandprotocol/chain/v2/app"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
+	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -21,8 +24,13 @@ func TestEstimateGas(t *testing.T) {
 	rpc, err := newRPCClient("https://rpc.laozi-testnet6.bandchain.org:443", "10s")
 	require.NoError(t, err)
 
+	// Setup codec
+	registry := codectypes.NewInterfaceRegistry()
+	cryptocodec.RegisterInterfaces(registry)
+	cdc := codec.NewProtoCodec(registry)
+
 	// Setup keybase
-	kb := keyring.NewInMemory()
+	kb := keyring.NewInMemory(cdc)
 	mnemonic := "child across insect stone enter jacket bitter citizen inch wear breeze " +
 		"adapt come attend vehicle caught wealth junk cloth velvet wheat curious prize panther"
 	hdPath := hd.CreateHDPath(band.Bip44CoinType, 0, 0)
@@ -31,7 +39,10 @@ func TestEstimateGas(t *testing.T) {
 
 	ctx := NewClientCtx(chainID).WithClient(rpc)
 
-	acc, err := getAccount(ctx, info.GetAddress())
+	addr, err := info.GetAddress()
+	require.NoError(t, err)
+
+	acc, err := getAccount(ctx, addr)
 	require.NoError(t, err)
 
 	txf := createTxFactory(
@@ -46,9 +57,13 @@ func TestEstimateGas(t *testing.T) {
 			"45474943000000034a4f45000000034d494d000000045045525000000003534649000000045354524b000000045355534" +
 			"40000000454555344000000045742544301",
 	)
+
+	sdkAddr, err := info.GetAddress()
+	require.NoError(t, err)
+
 	gas, err := estimateGas(
 		ctx, txf, oracletypes.NewMsgRequestData(
-			401, cd, 16, 10, "test", sdk.NewCoins(sdk.NewInt64Coin("uband", 2000)), 10000, 42000, info.GetAddress(),
+			401, cd, 16, 10, "test", sdk.NewCoins(sdk.NewInt64Coin("uband", 2000)), 10000, 42000, sdkAddr,
 		),
 	)
 	fmt.Println(gas)
