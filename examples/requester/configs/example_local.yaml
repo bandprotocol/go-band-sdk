@@ -1,0 +1,10 @@
+chain:
+  rpc: "tcp://localhost:26657"
+  chain_id: "bandchain"
+  fee: "0.0025uband"
+  timeout: "10s"
+request:
+  mnemonic: "smile stem oven genius cave resource better lunar nasty moon company ridge brass rather supply used horn three panic put venue analyst leader comic"
+  oracle_script_id: 1
+  calldata: "000000034254430000000100000000000000010000"
+log_level: "info"

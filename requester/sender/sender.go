@@ -16,7 +16,7 @@ type Sender struct {
 	client client.Client
 	logger logging.Logger
 
-	freeKeys chan keyring.Info
+	freeKeys chan keyring.Record
 	gasPrice float64
 
 	timeout      time.Duration
@@ -44,9 +44,9 @@ func NewSender(
 		return nil, err
 	}
 
-	freeKeys := make(chan keyring.Info, len(infos))
+	freeKeys := make(chan keyring.Record, len(infos))
 	for _, info := range infos {
-		freeKeys <- info
+		freeKeys <- *info
 	}
 
 	return &Sender{
@@ -83,26 +83,32 @@ func (s *Sender) Start() {
 	}
 }
 
-func (s *Sender) request(task Task, key keyring.Info) {
+func (s *Sender) request(task Task, key keyring.Record) {
 	defer func() {
 		s.freeKeys <- key
 	}()
 
 	// Mutate the msg's sender to the actual sender
-	task.Msg.Sender = key.GetAddress().String()
+	addr, err := key.GetAddress()
+	if err != nil {
+		s.logger.Error("Sender", "failed to get address from key: %s", err.Error())
+		return
+	}
+	task.Msg.Sender = addr.String()
 
 	// Attempt to send the request
 	resp, err := s.client.SendRequest(&task.Msg, s.gasPrice, key)
 	// Handle error
 	if err != nil {
-		s.logger.Warning("Sender", "failed to broadcast request ID(%d) with error: %s", task.ID(), err.Error())
+		s.logger.Error("Sender", "failed to broadcast request ID(%d) with error: %s", task.ID(), err.Error())
 		s.failedRequestCh <- FailResponse{task, sdk.TxResponse{}, types.ErrBroadcastFailed.Wrapf(err.Error())}
 		return
 	} else if resp != nil && resp.Code != 0 {
-		s.logger.Warning("Sender", "failed to broadcast request ID(%d) with code %d", task.ID(), resp.Code)
+		s.logger.Error("Sender", "failed to broadcast request ID(%d) with code %d", task.ID(), resp.Code)
 		s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed}
 		return
 	} else if resp == nil {
+		s.logger.Error("Sender", "failed to broadcast request ID(%d) no response", task.ID())
 		s.failedRequestCh <- FailResponse{task, sdk.TxResponse{}, types.ErrUnknown}
 		return
 	}
@@ -129,6 +135,6 @@ func (s *Sender) request(task Task, key keyring.Info) {
 		s.successfulRequestsCh <- SuccessResponse{task, *resp}
 		return
 	}
-	s.logger.Warning("Sender", "request ID(%d) has timed out", task.ID())
+	s.logger.Error("Sender", "request ID(%d) has timed out", task.ID())
 	s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf("timed out")}
 }

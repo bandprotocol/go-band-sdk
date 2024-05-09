@@ -7,6 +7,9 @@ import (
 
 	band "github.com/bandprotocol/chain/v2/app"
 	"github.com/bandprotocol/chain/v2/x/oracle/types"
+	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -21,7 +24,12 @@ import (
 )
 
 func SetupSender(cl client.Client, l logging.Logger, reqCh chan sender.Task) (*sender.Sender, error) {
-	kr := keyring.NewInMemory()
+	// Setup codec
+	registry := codectypes.NewInterfaceRegistry()
+	cryptocodec.RegisterInterfaces(registry)
+	cdc := codec.NewProtoCodec(registry)
+
+	kr := keyring.NewInMemory(cdc)
 	mnemonic := "child across insect stone enter jacket bitter citizen inch wear breeze adapt come attend vehicle caught wealth junk cloth velvet wheat curious prize panther"
 	hdPath := hd.CreateHDPath(band.Bip44CoinType, 0, 0)
 	_, err := kr.NewAccount("sender1", mnemonic, "", hdPath.String(), hd.Secp256k1)

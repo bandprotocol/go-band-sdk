@@ -1,13 +1,19 @@
 package main
 
 import (
+	"encoding/hex"
+	"os"
 	"time"
 
 	band "github.com/bandprotocol/chain/v2/app"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
+	"github.com/cosmos/cosmos-sdk/codec"
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/hd"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/spf13/viper"
 
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/middleware"
@@ -19,24 +25,98 @@ import (
 	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
 
+type ChainConfig struct {
+	ChainID string `yaml:"chain_id" mapstructure:"chain_id"`
+	RPC     string `yaml:"rpc" mapstructure:"rpc"`
+	Fee     string `yaml:"fee" mapstructure:"fee"`
+	Timeout string `yaml:"timeout" mapstructure:"timeout"`
+}
+
+type RequestConfig struct {
+	OracleScriptID int    `yaml:"oracle_script_id" mapstructure:"oracle_script_id"`
+	Calldata       string `yaml:"calldata" mapstructure:"calldata"`
+	Mnemonic       string `yaml:"mnemonic" mapstructure:"mnemonic"`
+}
+
+type Config struct {
+	Chain    ChainConfig   `yaml:"chain" mapstructure:"chain"`
+	Request  RequestConfig `yaml:"request" mapstructure:"request"`
+	LogLevel string        `yaml:"log_level" mapstructure:"log_level"`
+	SDK      *sdk.Config
+}
+
+func GetConfig(name string) (Config, error) {
+	viper.SetConfigType("yaml")
+	viper.SetConfigName(name)
+	viper.AddConfigPath("./requester/configs")
+
+	if err := viper.ReadInConfig(); err != nil {
+		return Config{}, err
+	}
+
+	var config Config
+	if err := viper.Unmarshal(&config); err != nil {
+		return Config{}, err
+	}
+
+	config.SDK = sdk.GetConfig()
+
+	return config, nil
+}
+
+func GetEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
+
+func GetOracleRequestData(reqConf RequestConfig, sender string) (oracletypes.MsgRequestData, error) {
+	calldataBytes, err := hex.DecodeString(reqConf.Calldata)
+	if err != nil {
+		return oracletypes.MsgRequestData{}, err
+	}
+
+	return oracletypes.MsgRequestData{
+		OracleScriptID: oracletypes.OracleScriptID(reqConf.OracleScriptID),
+		Calldata:       calldataBytes,
+		AskCount:       1,
+		MinCount:       1,
+		ClientID:       "test",
+		FeeLimit:       sdk.NewCoins(sdk.NewInt64Coin("uband", 10000)),
+		PrepareGas:     3000,
+		ExecuteGas:     10000,
+		Sender:         sender,
+	}, nil
+}
+
 func main() {
 	// Setup
-	appConfig := sdk.GetConfig()
-	band.SetBech32AddressPrefixesAndBip44CoinTypeAndSeal(appConfig)
+	config_file := GetEnv("CONFIG_FILE", "example_band_laozi.yaml")
+	config, err := GetConfig(config_file)
+	if err != nil {
+		panic(err)
+	}
+
+	band.SetBech32AddressPrefixesAndBip44CoinTypeAndSeal(config.SDK)
+
+	// Setup codec
+	registry := codectypes.NewInterfaceRegistry()
+	cryptocodec.RegisterInterfaces(registry)
+	cdc := codec.NewProtoCodec(registry)
 
 	// Setup common
-	l := logging.NewLogrus("info")
-	kb := keyring.NewInMemory()
-	mnemonic := "child across insect stone enter jacket bitter citizen inch wear breeze adapt come attend vehicle caught wealth junk cloth velvet wheat curious prize panther"
+	l := logging.NewLogrus(config.LogLevel)
+	kb := keyring.NewInMemory(cdc)
 	hdPath := hd.CreateHDPath(band.Bip44CoinType, 0, 0)
-	info, _ := kb.NewAccount("sender1", mnemonic, "", hdPath.String(), hd.Secp256k1)
+	info, _ := kb.NewAccount("sender1", config.Request.Mnemonic, "", hdPath.String(), hd.Secp256k1)
 
 	cl, err := client.NewRPC(
 		l,
-		[]string{"https://rpc.laozi-testnet6.bandchain.org:443"},
-		"band-laozi-testnet6",
-		"10s",
-		"0.0025uband",
+		[]string{config.Chain.RPC},
+		config.Chain.ChainID,
+		config.Chain.Timeout,
+		config.Chain.Fee,
 		kb,
 	)
 	if err != nil {
@@ -62,10 +142,10 @@ func main() {
 	delayHandler := delay.NewHandler[sender.FailResponse, sender.Task](3 * time.Second)
 
 	// Setup Sender Middleware
-	failureMw := middleware.New[sender.FailResponse, sender.Task](
+	failureMw := middleware.New(
 		s.FailedRequestsCh(), senderCh, parser.IntoSenderTaskHandler, retryCounter, delayHandler,
 	)
-	successMw := middleware.New[sender.SuccessResponse, request.Task](
+	successMw := middleware.New(
 		s.SuccessRequestsCh(),
 		watcherCh,
 		parser.IntoRequestWatcherTaskHandler,
@@ -79,16 +159,13 @@ func main() {
 	go successMw.Run()
 
 	// Send request
-	requestMsg := oracletypes.MsgRequestData{
-		OracleScriptID: 401,
-		Calldata:       []byte{0, 0, 0, 1, 0, 0, 0, 3, 66, 84, 67, 3},
-		AskCount:       1,
-		MinCount:       1,
-		ClientID:       "test",
-		FeeLimit:       sdk.NewCoins(sdk.NewInt64Coin("uband", 10000)),
-		PrepareGas:     3000,
-		ExecuteGas:     10000,
-		Sender:         info.GetAddress().String(),
+	addr, err := info.GetAddress()
+	if err != nil {
+		panic(err)
+	}
+	requestMsg, err := GetOracleRequestData(config.Request, addr.String())
+	if err != nil {
+		panic(err)
 	}
 
 	senderCh <- sender.NewTask(1, requestMsg)

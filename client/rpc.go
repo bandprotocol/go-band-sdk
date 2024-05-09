@@ -6,12 +6,12 @@ import (
 	"strconv"
 
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
+	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
+	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	rpchttp "github.com/tendermint/tendermint/rpc/client/http"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
@@ -103,7 +103,7 @@ func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
 			res, err := getRequest(c.ctx.WithClient(node), id)
 			if err != nil {
 				c.logger.Warning(
-					"Fail to get request from single endpoint",
+					"Fail to get request",
 					"Fail to get request from %s with error %s",
 					node.Remote(), err,
 				)
@@ -147,9 +147,9 @@ func (c RPC) GetTx(txHash string) (*sdk.TxResponse, error) {
 			res, err := getTx(c.ctx.WithClient(node), txHash)
 			if err != nil {
 				c.logger.Debug(
-					"Fail to get transaction from single endpoint",
-					"Fail to get transaction from %s, it might be wait for included in block",
-					node.Remote(),
+					"Fail to get transaction",
+					"Fail to get transaction from %s with error %s, it might be waiting for included in the block",
+					node.Remote(), err,
 				)
 				failCh <- struct{}{}
 				return
@@ -181,6 +181,11 @@ func (c RPC) GetBlockResult(height int64) (*ctypes.ResultBlockResults, error) {
 		go func(node *rpchttp.HTTP) {
 			blockResult, err := node.BlockResults(ctx, &height)
 			if err != nil {
+				c.logger.Debug(
+					"Fail to get block result",
+					"Fail to get block result from %s with error %s",
+					node.Remote(), err,
+				)
 				failCh <- struct{}{}
 			} else {
 				resultCh <- blockResult
@@ -223,19 +228,19 @@ func (c RPC) QueryRequestFailureReason(id uint64) (string, error) {
 			reason := ""
 
 			for _, attr := range event.Attributes {
-				switch string(attr.Key) {
+				switch attr.Key {
 				case oracletypes.AttributeKeyID:
-					rid, err = strconv.ParseUint(string(attr.Value), 10, 64)
+					rid, err = strconv.ParseUint(attr.Value, 10, 64)
 					if err != nil {
 						return "", fmt.Errorf("unable to parse request id")
 					}
 				case oracletypes.AttributeKeyResolveStatus:
-					resolveStatus, err = strconv.ParseUint(string(attr.Value), 10, 64)
+					resolveStatus, err = strconv.ParseUint(attr.Value, 10, 64)
 					if err != nil {
 						return "", fmt.Errorf("unable to parse resolve status")
 					}
 				case oracletypes.AttributeKeyReason:
-					reason = string(attr.Value)
+					reason = attr.Value
 				}
 			}
 
@@ -258,9 +263,14 @@ func (c RPC) GetBalance(_ sdk.AccAddress) (uint64, error) {
 	return 0, nil
 }
 
-func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key keyring.Info) (*sdk.TxResponse, error) {
+func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key keyring.Record) (*sdk.TxResponse, error) {
 	// Get account to get nonce of sender first
-	acc, err := c.GetAccount(key.GetAddress())
+	addr, err := key.GetAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	acc, err := c.GetAccount(addr)
 	if err != nil {
 		return nil, err
 	}
@@ -276,9 +286,9 @@ func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key 
 			gas, err := estimateGas(c.ctx.WithClient(node), txf, msg)
 			if err != nil {
 				c.logger.Warning(
-					"Fail to estimate tx gas from single endpoint",
-					"From %s",
-					node.Remote(),
+					"Fail to estimate tx gas",
+					"Fail to estimate tx gas from %s with error %s",
+					node.Remote(), err,
 				)
 				failCh <- struct{}{}
 			} else {
@@ -308,13 +318,13 @@ Gas:
 	// Build unsigned tx with estimated gas
 	txf = txf.WithGas(gas)
 	txf = txf.WithGasPrices(fmt.Sprintf("%vuband", gasPrice))
-	txb, err := tx.BuildUnsignedTx(txf, msg)
+	txb, err := txf.BuildUnsignedTx(msg)
 	if err != nil {
 		return nil, err
 	}
 
 	// Sign tx
-	err = tx.Sign(txf, key.GetName(), txb, false)
+	err = tx.Sign(txf, key.Name, txb, false)
 	if err != nil {
 		return nil, err
 	}
@@ -367,7 +377,19 @@ func (c RPC) blockSearch(query string, page *int, perPage *int, orderBy string) 
 	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
 			blockResult, err := node.BlockSearch(ctx, query, page, perPage, orderBy)
-			if err != nil || blockResult.TotalCount == 0 {
+			if err != nil {
+				c.logger.Warning(
+					"Fail to do a blockSearch",
+					"Fail to do a blockSearch from %s with error %s",
+					node.Remote(), err,
+				)
+				failCh <- struct{}{}
+			} else if blockResult.TotalCount == 0 {
+				c.logger.Warning(
+					"No result from a blockSearch",
+					"No result from a blockSearch on %s",
+					node.Remote(),
+				)
 				failCh <- struct{}{}
 			} else {
 				resultCh <- blockResult
