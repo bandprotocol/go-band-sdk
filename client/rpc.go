@@ -148,7 +148,7 @@ func (c RPC) GetTx(txHash string) (*sdk.TxResponse, error) {
 			if err != nil {
 				c.logger.Debug(
 					"Fail to get transaction",
-					"Fail to get transaction from %s, it might be wait for included in block %s",
+					"Fail to get transaction from %s with error %s, it might be waiting for included in the block",
 					node.Remote(), err,
 				)
 				failCh <- struct{}{}
