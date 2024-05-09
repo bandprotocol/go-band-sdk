@@ -64,7 +64,7 @@ func GetConfig(name string) (Config, error) {
 	return config, nil
 }
 
-func GetENV(key, fallback string) string {
+func GetEnv(key, fallback string) string {
 	if value, ok := os.LookupEnv(key); ok {
 		return value
 	}
@@ -92,7 +92,7 @@ func GetOracleRequestData(reqConf RequestConfig, sender string) (oracletypes.Msg
 
 func main() {
 	// Setup
-	config_file := GetENV("CONFIG_FILE", "example_band_laozi.yaml")
+	config_file := GetEnv("CONFIG_FILE", "example_band_laozi.yaml")
 	config, err := GetConfig(config_file)
 	if err != nil {
 		panic(err)
