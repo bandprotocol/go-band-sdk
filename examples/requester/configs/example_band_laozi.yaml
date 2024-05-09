@@ -1,0 +1,10 @@
+chain:
+  rpc: "https://rpc.laozi-testnet6.bandchain.org:443"
+  chain_id: "band-laozi-testnet6"
+  fee: "0.0025uband"
+  timeout: "10s"
+request:
+  mnemonic: "child across insect stone enter jacket bitter citizen inch wear breeze adapt come attend vehicle caught wealth junk cloth velvet wheat curious prize panther"
+  oracle_script_id: 401
+  calldata: "000000010000000342544303"
+log_level: "info"
