@@ -87,6 +87,7 @@ func GetOracleRequestData(reqConf RequestConfig, sender string) (oracletypes.Msg
 		PrepareGas:     3000,
 		ExecuteGas:     10000,
 		Sender:         sender,
+		TSSEncodeType:  oracletypes.ENCODE_TYPE_FULL_ABI,
 	}, nil
 }
 
