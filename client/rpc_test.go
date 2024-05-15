@@ -63,7 +63,7 @@ func TestEstimateGas(t *testing.T) {
 
 	gas, err := estimateGas(
 		ctx, txf, oracletypes.NewMsgRequestData(
-			401, cd, 16, 10, "test", sdk.NewCoins(sdk.NewInt64Coin("uband", 2000)), 10000, 42000, sdkAddr,
+			401, cd, 16, 10, "test", sdk.NewCoins(sdk.NewInt64Coin("uband", 2000)), 10000, 42000, sdkAddr, 0,
 		),
 	)
 	fmt.Println(gas)

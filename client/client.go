@@ -11,8 +11,8 @@ import (
 type Client interface {
 	GetAccount(account sdk.AccAddress) (client.Account, error)
 	GetTx(txHash string) (*sdk.TxResponse, error)
-	GetResult(id uint64) (*oracletypes.Result, error)
-	GetSignature(id uint64) ([]byte, error)
+	GetResult(id uint64) (*OracleResult, error)
+	GetSignature(id uint64) (*SigningResult, error)
 	GetBlockResult(height int64) (*ctypes.ResultBlockResults, error)
 	QueryRequestFailureReason(id uint64) (string, error)
 	GetBalance(account sdk.AccAddress) (uint64, error)

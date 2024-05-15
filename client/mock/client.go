@@ -13,8 +13,9 @@ import (
 	reflect "reflect"
 
 	types "github.com/bandprotocol/chain/v2/x/oracle/types"
+	client "github.com/bandprotocol/go-band-sdk/client"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	client "github.com/cosmos/cosmos-sdk/client"
+	client0 "github.com/cosmos/cosmos-sdk/client"
 	keyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
 	types0 "github.com/cosmos/cosmos-sdk/types"
 	gomock "go.uber.org/mock/gomock"
@@ -44,10 +45,10 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // GetAccount mocks base method.
-func (m *MockClient) GetAccount(account types0.AccAddress) (client.Account, error) {
+func (m *MockClient) GetAccount(account types0.AccAddress) (client0.Account, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAccount", account)
-	ret0, _ := ret[0].(client.Account)
+	ret0, _ := ret[0].(client0.Account)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -89,10 +90,10 @@ func (mr *MockClientMockRecorder) GetBlockResult(height any) *gomock.Call {
 }
 
 // GetResult mocks base method.
-func (m *MockClient) GetResult(id uint64) (*types.Result, error) {
+func (m *MockClient) GetResult(id uint64) (*client.OracleResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetResult", id)
-	ret0, _ := ret[0].(*types.Result)
+	ret0, _ := ret[0].(*client.OracleResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -104,10 +105,10 @@ func (mr *MockClientMockRecorder) GetResult(id any) *gomock.Call {
 }
 
 // GetSignature mocks base method.
-func (m *MockClient) GetSignature(id uint64) ([]byte, error) {
+func (m *MockClient) GetSignature(id uint64) (*client.SigningResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSignature", id)
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].(*client.SigningResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	band "github.com/bandprotocol/chain/v2/app"
+	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	libclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
@@ -77,6 +78,11 @@ func getRequest(clientCtx client.Context, id uint64) (*oracletypes.QueryRequestR
 	return queryClient.Request(context.Background(), &oracletypes.QueryRequestRequest{RequestId: id})
 }
 
+func getSigningResult(clientCtx client.Context, signingId uint64) (*bandtsstypes.QuerySigningResponse, error) {
+	queryClient := bandtsstypes.NewQueryClient(clientCtx)
+	return queryClient.Signing(context.Background(), &bandtsstypes.QuerySigningRequest{SigningId: signingId})
+}
+
 func estimateGas(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (uint64, error) {
 	_, gas, err := tx.CalculateGas(clientCtx, txf, msgs...)
 	return gas, err
@@ -94,4 +100,23 @@ func GetRequestID(events []sdk.StringEvent) (uint64, error) {
 		}
 	}
 	return 0, fmt.Errorf("cannot find request id")
+}
+
+func convertSigningInfo(resp *bandtsstypes.QuerySigningResponse) SigningResult {
+	res := SigningResult{}
+	if resp.CurrentGroupSigningResult != nil {
+		if resp.CurrentGroupSigningResult.EVMSignature != nil {
+			res.CurrentGroupSigning = resp.CurrentGroupSigningResult.EVMSignature.Signature
+		}
+		res.CurrentGroupPubKey = resp.CurrentGroupSigningResult.Signing.GroupPubKey
+	}
+
+	if resp.ReplacingGroupSigningResult != nil {
+		if resp.ReplacingGroupSigningResult.EVMSignature != nil {
+			res.ReplacingGroupSigning = resp.ReplacingGroupSigningResult.EVMSignature.Signature
+		}
+		res.ReplacingGroupPubKey = resp.ReplacingGroupSigningResult.Signing.GroupPubKey
+	}
+
+	return res
 }

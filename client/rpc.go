@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
@@ -93,8 +94,8 @@ func (c RPC) GetAccount(account sdk.AccAddress) (client.Account, error) {
 }
 
 // GetResult find result from multiple clients
-func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
-	resultCh := make(chan *oracletypes.Result, len(c.nodes))
+func (c RPC) GetResult(id uint64) (*OracleResult, error) {
+	resultCh := make(chan *OracleResult, len(c.nodes))
 	failCh := make(chan struct{}, len(c.nodes))
 
 	for _, node := range c.nodes {
@@ -121,7 +122,16 @@ func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
 				return
 			}
 
-			resultCh <- res.Result
+			signingID := bandtsstypes.SigningID(0)
+			if res.Signing != nil {
+				signingID = res.Signing.SigningID
+			}
+			oracleResult := OracleResult{
+				Result:    res.Result,
+				SigningID: signingID,
+			}
+
+			resultCh <- &oracleResult
 		}(node)
 	}
 
@@ -253,9 +263,40 @@ func (c RPC) QueryRequestFailureReason(id uint64) (string, error) {
 	return "", fmt.Errorf("no reason found")
 }
 
-func (c RPC) GetSignature(_ uint64) ([]byte, error) {
-	// TODO: Implement when need TSS signature
-	return []byte{}, nil
+func (c RPC) GetSignature(signingID uint64) (*SigningResult, error) {
+	resultCh := make(chan *SigningResult, len(c.nodes))
+	failCh := make(chan struct{}, len(c.nodes))
+
+	for _, node := range c.nodes {
+		go func(node *rpchttp.HTTP) {
+			c.logger.Debug("Getting request", "Try to get request from %s", node.Remote())
+
+			res, err := getSigningResult(c.ctx.WithClient(node), signingID)
+			if err != nil {
+				c.logger.Warning(
+					"Fail to get request",
+					"Fail to get request from %s with error %s",
+					node.Remote(), err,
+				)
+				failCh <- struct{}{}
+				return
+			}
+
+			signingResult := convertSigningInfo(res)
+			resultCh <- &signingResult
+		}(node)
+	}
+
+	// Return the first result that we found;
+	// If unable to get result from all nodes, return error.
+	for range c.nodes {
+		select {
+		case res := <-resultCh:
+			return res, nil
+		case <-failCh:
+		}
+	}
+	return nil, fmt.Errorf("failed to get result from all endpoints")
 }
 
 func (c RPC) GetBalance(_ sdk.AccAddress) (uint64, error) {
