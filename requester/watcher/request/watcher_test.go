@@ -9,7 +9,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"go.uber.org/mock/gomock"
 
-	client "github.com/bandprotocol/go-band-sdk/client/mock"
+	"github.com/bandprotocol/go-band-sdk/client"
+	mockclient "github.com/bandprotocol/go-band-sdk/client/mock"
 	"github.com/bandprotocol/go-band-sdk/requester/watcher/request"
 	logging "github.com/bandprotocol/go-band-sdk/utils/logging/mock"
 )
@@ -17,20 +18,23 @@ import (
 func TestWatcher(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	res := oracletypes.Result{
-		ClientID:       "",
-		OracleScriptID: 0,
-		Calldata:       nil,
-		AskCount:       0,
-		MinCount:       0,
-		RequestID:      0,
-		AnsCount:       0,
-		RequestTime:    0,
-		ResolveTime:    0,
-		ResolveStatus:  1,
-		Result:         nil,
+	res := client.OracleResult{
+		Result: &oracletypes.Result{
+			ClientID:       "",
+			OracleScriptID: 0,
+			Calldata:       nil,
+			AskCount:       0,
+			MinCount:       0,
+			RequestID:      0,
+			AnsCount:       0,
+			RequestTime:    0,
+			ResolveTime:    0,
+			ResolveStatus:  1,
+			Result:         nil,
+		},
+		SigningID: 0,
 	}
-	mockClient := client.NewMockClient(ctrl)
+	mockClient := mockclient.NewMockClient(ctrl)
 	mockClient.EXPECT().GetResult(gomock.Any()).Return(&res, nil).Times(1)
 
 	mockLogger := logging.NewLogger()
@@ -77,21 +81,24 @@ func TestWatcher(t *testing.T) {
 func TestWatcherWithResolveFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	res := oracletypes.Result{
-		ClientID:       "",
-		OracleScriptID: 1,
-		Calldata:       nil,
-		AskCount:       10,
-		MinCount:       16,
-		RequestID:      1,
-		AnsCount:       16,
-		RequestTime:    1,
-		ResolveTime:    2,
-		ResolveStatus:  2,
-		Result:         nil,
+	res := client.OracleResult{
+		Result: &oracletypes.Result{
+			ClientID:       "",
+			OracleScriptID: 1,
+			Calldata:       nil,
+			AskCount:       10,
+			MinCount:       16,
+			RequestID:      1,
+			AnsCount:       16,
+			RequestTime:    1,
+			ResolveTime:    2,
+			ResolveStatus:  2,
+			Result:         nil,
+		},
+		SigningID: 0,
 	}
 
-	mockClient := client.NewMockClient(ctrl)
+	mockClient := mockclient.NewMockClient(ctrl)
 	mockClient.EXPECT().GetResult(gomock.Any()).Return(&res, nil).Times(1)
 
 	mockLogger := logging.NewLogger()
@@ -136,7 +143,7 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 func TestWatcherWithTimeout(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	mockClient := client.NewMockClient(ctrl)
+	mockClient := mockclient.NewMockClient(ctrl)
 	mockClient.EXPECT().GetResult(gomock.Any()).Return(nil, fmt.Errorf("error")).AnyTimes()
 
 	mockLogger := logging.NewLogger()

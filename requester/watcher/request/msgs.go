@@ -3,6 +3,7 @@ package request
 import (
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 
+	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
 )
 
@@ -32,12 +33,12 @@ func (t Task) ID() uint64 {
 
 type SuccessResponse struct {
 	Task
-	oracletypes.Result
+	client.OracleResult
 }
 
 type FailResponse struct {
 	Task
-	oracletypes.Result
+	client.OracleResult
 	error types.Error
 }
 

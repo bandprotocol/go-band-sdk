@@ -68,7 +68,7 @@ func (w *Watcher) watch(task Task) {
 			continue
 		}
 
-		switch res.GetResolveStatus() {
+		switch res.Result.GetResolveStatus() {
 		case oracletypes.RESOLVE_STATUS_OPEN:
 			// if request ID found, poll till results gotten or timeout
 			time.Sleep(w.pollingDelay)
@@ -88,5 +88,5 @@ func (w *Watcher) watch(task Task) {
 		}
 	}
 
-	w.failedRequestCh <- FailResponse{task, oracletypes.Result{}, types.ErrTimedOut}
+	w.failedRequestCh <- FailResponse{task, client.OracleResult{}, types.ErrTimedOut}
 }
