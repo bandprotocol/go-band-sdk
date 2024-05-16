@@ -1,10 +1,10 @@
-package request
+package signing
 
 import (
 	"encoding/json"
 	"time"
 
-	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
+	tsstypes "github.com/bandprotocol/chain/v2/x/tss/types"
 
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
@@ -59,20 +59,31 @@ func (w *Watcher) Start() {
 }
 
 func (w *Watcher) watch(task Task) {
+	if task.SigningID == 0 {
+		w.failedRequestCh <- FailResponse{task, client.SigningResult{}, types.ErrUnknown.Wrapf("signing ID %d is invalid", task.SigningID)}
+		return
+	}
+
 	et := time.Now().Add(w.timeout)
 
 	for time.Now().Before(et) {
-		res, err := w.client.GetResult(task.RequestID)
+		res, err := w.client.GetSignature(task.SigningID)
 		if err != nil {
 			time.Sleep(w.pollingDelay)
 			continue
 		}
 
-		switch res.Result.GetResolveStatus() {
-		case oracletypes.RESOLVE_STATUS_OPEN:
-			// if request ID found, poll till results gotten or timeout
+		isWaiting := res.CurrentGroup.Status == tsstypes.SIGNING_STATUS_WAITING ||
+			res.ReplacingGroup.Status == tsstypes.SIGNING_STATUS_WAITING
+
+		done := res.CurrentGroup.Status == tsstypes.SIGNING_STATUS_SUCCESS &&
+			(res.ReplacingGroup.Status == tsstypes.SIGNING_STATUS_SUCCESS ||
+				res.ReplacingGroup.Status == tsstypes.SIGNING_STATUS_UNSPECIFIED)
+
+		switch {
+		case isWaiting:
 			time.Sleep(w.pollingDelay)
-		case oracletypes.RESOLVE_STATUS_SUCCESS:
+		case done:
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
 			w.logger.Info("Watcher", "task ID(%d) has been resolved with result: %s", task.ID(), string(b))
@@ -82,11 +93,11 @@ func (w *Watcher) watch(task Task) {
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
 			w.logger.Info("Watcher", "task ID(%d) has failed with result: %s", task.ID(), string(b))
-			wrappedErr := types.ErrUnknown.Wrapf("request ID %d failed with unknown reason: %s", task.RequestID, err)
+			wrappedErr := types.ErrUnknown.Wrapf("signign ID %d failed with unknown reason: %s", task.SigningID, err)
 			w.failedRequestCh <- FailResponse{task, *res, wrappedErr}
 			return
 		}
 	}
 
-	w.failedRequestCh <- FailResponse{task, client.OracleResult{}, types.ErrTimedOut}
+	w.failedRequestCh <- FailResponse{task, client.SigningResult{}, types.ErrTimedOut}
 }
