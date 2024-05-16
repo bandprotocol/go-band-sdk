@@ -78,9 +78,9 @@ func getRequest(clientCtx client.Context, id uint64) (*oracletypes.QueryRequestR
 	return queryClient.Request(context.Background(), &oracletypes.QueryRequestRequest{RequestId: id})
 }
 
-func getSigningResult(clientCtx client.Context, signingId uint64) (*bandtsstypes.QuerySigningResponse, error) {
+func getSigningResult(clientCtx client.Context, signingID uint64) (*bandtsstypes.QuerySigningResponse, error) {
 	queryClient := bandtsstypes.NewQueryClient(clientCtx)
-	return queryClient.Signing(context.Background(), &bandtsstypes.QuerySigningRequest{SigningId: signingId})
+	return queryClient.Signing(context.Background(), &bandtsstypes.QuerySigningRequest{SigningId: signingID})
 }
 
 func estimateGas(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (uint64, error) {
@@ -105,17 +105,25 @@ func GetRequestID(events []sdk.StringEvent) (uint64, error) {
 func convertSigningInfo(resp *bandtsstypes.QuerySigningResponse) SigningResult {
 	res := SigningResult{}
 	if resp.CurrentGroupSigningResult != nil {
+		info := SigningInfo{}
 		if resp.CurrentGroupSigningResult.EVMSignature != nil {
-			res.CurrentGroupSigning = resp.CurrentGroupSigningResult.EVMSignature.Signature
+			info.Signing = resp.CurrentGroupSigningResult.EVMSignature.Signature
 		}
-		res.CurrentGroupPubKey = resp.CurrentGroupSigningResult.Signing.GroupPubKey
+		info.PubKey = resp.CurrentGroupSigningResult.Signing.GroupPubKey
+		info.Status = resp.CurrentGroupSigningResult.Signing.Status
+
+		res.CurrentGroup = info
 	}
 
 	if resp.ReplacingGroupSigningResult != nil {
+		info := SigningInfo{}
 		if resp.ReplacingGroupSigningResult.EVMSignature != nil {
-			res.ReplacingGroupSigning = resp.ReplacingGroupSigningResult.EVMSignature.Signature
+			info.Signing = resp.ReplacingGroupSigningResult.EVMSignature.Signature
 		}
-		res.ReplacingGroupPubKey = resp.ReplacingGroupSigningResult.Signing.GroupPubKey
+		info.PubKey = resp.ReplacingGroupSigningResult.Signing.GroupPubKey
+		info.Status = resp.ReplacingGroupSigningResult.Signing.Status
+
+		res.ReplacingGroup = info
 	}
 
 	return res
