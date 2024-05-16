@@ -102,7 +102,7 @@ func GetRequestID(events []sdk.StringEvent) (uint64, error) {
 	return 0, fmt.Errorf("cannot find request id")
 }
 
-func convertSigningInfo(resp *bandtsstypes.QuerySigningResponse) SigningResult {
+func convertSigningResponse(resp *bandtsstypes.QuerySigningResponse) SigningResult {
 	res := SigningResult{}
 	if resp.CurrentGroupSigningResult != nil {
 		info := SigningInfo{}

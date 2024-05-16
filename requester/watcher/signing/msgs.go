@@ -12,7 +12,7 @@ var (
 )
 
 type Task struct {
-	id        uint64 // ID to identify request with response later
+	id        uint64
 	SigningID uint64
 }
 
