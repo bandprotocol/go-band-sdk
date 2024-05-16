@@ -19,9 +19,10 @@ import (
 	"github.com/bandprotocol/go-band-sdk/requester/middleware"
 	"github.com/bandprotocol/go-band-sdk/requester/middleware/handlers/delay"
 	"github.com/bandprotocol/go-band-sdk/requester/middleware/handlers/retry"
+	"github.com/bandprotocol/go-band-sdk/requester/middleware/parser"
 	"github.com/bandprotocol/go-band-sdk/requester/sender"
-	"github.com/bandprotocol/go-band-sdk/requester/sender/handlers/parser"
 	"github.com/bandprotocol/go-band-sdk/requester/watcher/request"
+	"github.com/bandprotocol/go-band-sdk/requester/watcher/signing"
 	"github.com/bandprotocol/go-band-sdk/utils/logging"
 )
 
@@ -71,7 +72,7 @@ func GetEnv(key, fallback string) string {
 	return fallback
 }
 
-func GetOracleRequestData(reqConf RequestConfig, sender string) (oracletypes.MsgRequestData, error) {
+func getOracleMsgRequestData(reqConf RequestConfig, sender string) (oracletypes.MsgRequestData, error) {
 	calldataBytes, err := hex.DecodeString(reqConf.Calldata)
 	if err != nil {
 		return oracletypes.MsgRequestData{}, err
@@ -91,6 +92,98 @@ func GetOracleRequestData(reqConf RequestConfig, sender string) (oracletypes.Msg
 	}, nil
 }
 
+func requestOracleData(
+	cli *client.RPC,
+	log *logging.Logrus,
+	kr keyring.Keyring,
+	msg oracletypes.MsgRequestData,
+) (client.OracleResult, error) {
+	// Setup Sender and Watcher
+	senderCh := make(chan sender.Task, 5)
+	watcherCh := make(chan request.Task, 5)
+
+	s, err := sender.NewSender(cli, log, kr, 0.0025, 60*time.Second, 3*time.Second, senderCh, 5, 5)
+	if err != nil {
+		return client.OracleResult{}, err
+	}
+	w := request.NewWatcher(cli, log, 60*time.Second, 3*time.Second, watcherCh, 5, 5)
+
+	// Setup handlers and middlewares
+	f := retry.NewHandlerFactory(3, log)
+	retryHandler := retry.NewCounterHandler[sender.FailResponse, sender.Task](f)
+	resolveHandler := retry.NewResolverHandler[sender.SuccessResponse, request.Task](f)
+	delayHandler := delay.NewHandler[sender.FailResponse, sender.Task](3 * time.Second)
+
+	retryMw := middleware.New(
+		s.FailedRequestsCh(), senderCh, parser.IntoSenderTaskHandler, retryHandler, delayHandler,
+	)
+	resolveMw := middleware.New(
+		s.SuccessRequestsCh(), watcherCh, parser.IntoRequestWatcherTaskHandler, resolveHandler,
+	)
+
+	// start
+	go s.Start()
+	go w.Start()
+	go retryMw.Run()
+	go resolveMw.Run()
+
+	senderCh <- sender.NewTask(1, msg)
+	for {
+		time.Sleep(10 * time.Second)
+		if len(w.FailedRequestCh()) != 0 || len(w.SuccessfulRequestCh()) != 0 {
+			break
+		}
+	}
+
+	if len(w.FailedRequestCh()) != 0 {
+		failResp := <-w.FailedRequestCh()
+		return client.OracleResult{}, failResp
+	}
+
+	resp := <-w.SuccessfulRequestCh()
+	return resp.OracleResult, nil
+}
+
+func getSigningResult(
+	cli *client.RPC,
+	log *logging.Logrus,
+	signingID uint64,
+) (client.SigningResult, error) {
+	// Setup watcher.
+	watcherCh := make(chan signing.Task, 5)
+	w := signing.NewWatcher(cli, log, 60*time.Second, 3*time.Second, watcherCh, 5, 5)
+
+	// Setup handlers and middleware
+	f := retry.NewHandlerFactory(5, log)
+	retryHandler := retry.NewCounterHandler[signing.FailResponse, signing.Task](f)
+	delayHandler := delay.NewHandler[signing.FailResponse, signing.Task](3 * time.Second)
+
+	retryMw := middleware.New(
+		w.FailedRequestCh(), watcherCh, parser.IntoSigningWatcherTaskHandler, retryHandler, delayHandler,
+	)
+
+	// start
+	go w.Start()
+	go retryMw.Run()
+
+	// new task to query tss signing result.
+	watcherCh <- signing.NewTask(2, signingID)
+	for {
+		time.Sleep(10 * time.Second)
+		if len(w.FailedRequestCh()) != 0 || len(w.SuccessfulRequestCh()) != 0 {
+			break
+		}
+	}
+
+	if len(w.FailedRequestCh()) != 0 {
+		failResp := <-w.FailedRequestCh()
+		return client.SigningResult{}, failResp
+	}
+
+	resp := <-w.SuccessfulRequestCh()
+	return resp.SigningResult, nil
+}
+
 func main() {
 	// Setup
 	config_file := GetEnv("CONFIG_FILE", "example_band_laozi.yaml")
@@ -108,9 +201,9 @@ func main() {
 
 	// Setup common
 	l := logging.NewLogrus(config.LogLevel)
-	kb := keyring.NewInMemory(cdc)
+	kr := keyring.NewInMemory(cdc)
 	hdPath := hd.CreateHDPath(band.Bip44CoinType, 0, 0)
-	info, _ := kb.NewAccount("sender1", config.Request.Mnemonic, "", hdPath.String(), hd.Secp256k1)
+	info, _ := kr.NewAccount("sender1", config.Request.Mnemonic, "", hdPath.String(), hd.Secp256k1)
 
 	cl, err := client.NewRPC(
 		l,
@@ -118,62 +211,36 @@ func main() {
 		config.Chain.ChainID,
 		config.Chain.Timeout,
 		config.Chain.Fee,
-		kb,
+		kr,
 	)
 	if err != nil {
 		panic(err)
 	}
 
-	// Setup Sender
-	senderCh := make(chan sender.Task, 100)
-	s, err := sender.NewSender(cl, l, kb, 0.0025, 60*time.Second, 3*time.Second, senderCh, 100, 100)
-	if err != nil {
-		panic(err)
-	}
-
-	// Setup Watcher
-	watcherCh := make(chan request.Task, 100)
-	rw := request.NewWatcher(cl, l, 60*time.Second, 3*time.Second, watcherCh, 100, 100)
-
-	// Setup retry and delay handlers
-	factory := retry.NewHandlerFactory(3, l)
-	retryCounter := retry.NewCounterHandler[sender.FailResponse, sender.Task](factory)
-	retryResolver := retry.NewResolverHandler[sender.SuccessResponse, request.Task](factory)
-
-	delayHandler := delay.NewHandler[sender.FailResponse, sender.Task](3 * time.Second)
-
-	// Setup Sender Middleware
-	failureMw := middleware.New(
-		s.FailedRequestsCh(), senderCh, parser.IntoSenderTaskHandler, retryCounter, delayHandler,
-	)
-	successMw := middleware.New(
-		s.SuccessRequestsCh(),
-		watcherCh,
-		parser.IntoRequestWatcherTaskHandler,
-		retryResolver,
-	)
-
-	// start
-	go s.Start()
-	go rw.Start()
-	go failureMw.Run()
-	go successMw.Run()
-
-	// Send request
+	// construct message and send request
 	addr, err := info.GetAddress()
 	if err != nil {
 		panic(err)
 	}
-	requestMsg, err := GetOracleRequestData(config.Request, addr.String())
+	requestMsg, err := getOracleMsgRequestData(config.Request, addr.String())
+	if err != nil {
+		panic(err)
+	}
+	oracleResult, err := requestOracleData(cl, l, kr, requestMsg)
 	if err != nil {
 		panic(err)
 	}
 
-	senderCh <- sender.NewTask(1, requestMsg)
-	for {
-		time.Sleep(10 * time.Second)
-		if len(rw.FailedRequestCh()) != 0 || len(rw.SuccessfulRequestCh()) != 0 {
-			break
-		}
+	signingID := oracleResult.SigningID
+	if signingID == 0 {
+		l.Info("example", "No tss signing is requested")
+		return
 	}
+
+	signingResult, err := getSigningResult(cl, l, uint64(signingID))
+	if err != nil {
+		panic(err)
+	}
+
+	l.Info("example", "Signing result: %v", signingResult)
 }
