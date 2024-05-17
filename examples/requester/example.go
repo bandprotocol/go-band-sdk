@@ -153,18 +153,8 @@ func getSigningResult(
 	watcherCh := make(chan signing.Task, 5)
 	w := signing.NewWatcher(cli, log, 60*time.Second, 3*time.Second, watcherCh, 5, 5)
 
-	// Setup handlers and middleware
-	f := retry.NewHandlerFactory(5, log)
-	retryHandler := retry.NewCounterHandler[signing.FailResponse, signing.Task](f)
-	delayHandler := delay.NewHandler[signing.FailResponse, signing.Task](3 * time.Second)
-
-	retryMw := middleware.New(
-		w.FailedRequestsCh(), watcherCh, parser.IntoSigningWatcherTaskHandler, retryHandler, delayHandler,
-	)
-
 	// start
 	go w.Start()
-	go retryMw.Start()
 
 	// new task to query tss signing result.
 	watcherCh <- signing.NewTask(2, signingID)
