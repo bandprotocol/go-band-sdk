@@ -118,29 +118,29 @@ func requestOracleData(
 		s.FailedRequestsCh(), senderCh, parser.IntoSenderTaskHandler, retryHandler, delayHandler,
 	)
 	resolveMw := middleware.New(
-		s.SuccessRequestsCh(), watcherCh, parser.IntoRequestWatcherTaskHandler, resolveHandler,
+		s.SuccessfulRequestsCh(), watcherCh, parser.IntoRequestWatcherTaskHandler, resolveHandler,
 	)
 
 	// start
 	go s.Start()
 	go w.Start()
-	go retryMw.Run()
-	go resolveMw.Run()
+	go retryMw.Start()
+	go resolveMw.Start()
 
 	senderCh <- sender.NewTask(1, msg)
 	for {
 		time.Sleep(10 * time.Second)
-		if len(w.FailedRequestCh()) != 0 || len(w.SuccessfulRequestCh()) != 0 {
+		if len(w.FailedRequestsCh()) != 0 || len(w.SuccessfulRequestsCh()) != 0 {
 			break
 		}
 	}
 
-	if len(w.FailedRequestCh()) != 0 {
-		failResp := <-w.FailedRequestCh()
+	if len(w.FailedRequestsCh()) != 0 {
+		failResp := <-w.FailedRequestsCh()
 		return client.OracleResult{}, failResp
 	}
 
-	resp := <-w.SuccessfulRequestCh()
+	resp := <-w.SuccessfulRequestsCh()
 	return resp.OracleResult, nil
 }
 
@@ -159,28 +159,28 @@ func getSigningResult(
 	delayHandler := delay.NewHandler[signing.FailResponse, signing.Task](3 * time.Second)
 
 	retryMw := middleware.New(
-		w.FailedRequestCh(), watcherCh, parser.IntoSigningWatcherTaskHandler, retryHandler, delayHandler,
+		w.FailedRequestsCh(), watcherCh, parser.IntoSigningWatcherTaskHandler, retryHandler, delayHandler,
 	)
 
 	// start
 	go w.Start()
-	go retryMw.Run()
+	go retryMw.Start()
 
 	// new task to query tss signing result.
 	watcherCh <- signing.NewTask(2, signingID)
 	for {
 		time.Sleep(10 * time.Second)
-		if len(w.FailedRequestCh()) != 0 || len(w.SuccessfulRequestCh()) != 0 {
+		if len(w.FailedRequestsCh()) != 0 || len(w.SuccessfulRequestsCh()) != 0 {
 			break
 		}
 	}
 
-	if len(w.FailedRequestCh()) != 0 {
-		failResp := <-w.FailedRequestCh()
+	if len(w.FailedRequestsCh()) != 0 {
+		failResp := <-w.FailedRequestsCh()
 		return client.SigningResult{}, failResp
 	}
 
-	resp := <-w.SuccessfulRequestCh()
+	resp := <-w.SuccessfulRequestsCh()
 	return resp.SigningResult, nil
 }
 

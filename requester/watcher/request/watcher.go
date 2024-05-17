@@ -19,9 +19,9 @@ type Watcher struct {
 	pollingDelay time.Duration
 
 	// Channel
-	watchQueueCh        <-chan Task
-	successfulRequestCh chan SuccessResponse
-	failedRequestCh     chan FailResponse
+	watchQueueCh         <-chan Task
+	successfulRequestsCh chan SuccessResponse
+	failedRequestsCh     chan FailResponse
 }
 
 func NewWatcher(
@@ -34,22 +34,22 @@ func NewWatcher(
 	failureChBufferSize int,
 ) *Watcher {
 	return &Watcher{
-		client:              client,
-		logger:              logger,
-		timeout:             timeout,
-		pollingDelay:        pollingDelay,
-		watchQueueCh:        watchQueueCh,
-		successfulRequestCh: make(chan SuccessResponse, successChBufferSize),
-		failedRequestCh:     make(chan FailResponse, failureChBufferSize),
+		client:               client,
+		logger:               logger,
+		timeout:              timeout,
+		pollingDelay:         pollingDelay,
+		watchQueueCh:         watchQueueCh,
+		successfulRequestsCh: make(chan SuccessResponse, successChBufferSize),
+		failedRequestsCh:     make(chan FailResponse, failureChBufferSize),
 	}
 }
 
-func (w *Watcher) SuccessfulRequestCh() <-chan SuccessResponse {
-	return w.successfulRequestCh
+func (w *Watcher) SuccessfulRequestsCh() <-chan SuccessResponse {
+	return w.successfulRequestsCh
 }
 
-func (w *Watcher) FailedRequestCh() <-chan FailResponse {
-	return w.failedRequestCh
+func (w *Watcher) FailedRequestsCh() <-chan FailResponse {
+	return w.failedRequestsCh
 }
 
 func (w *Watcher) Start() {
@@ -76,17 +76,17 @@ func (w *Watcher) watch(task Task) {
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
 			w.logger.Info("Watcher", "task ID(%d) has been resolved with result: %s", task.ID(), string(b))
-			w.successfulRequestCh <- SuccessResponse{task, *res}
+			w.successfulRequestsCh <- SuccessResponse{task, *res}
 			return
 		default:
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
 			w.logger.Info("Watcher", "task ID(%d) has failed with result: %s", task.ID(), string(b))
 			wrappedErr := types.ErrUnknown.Wrapf("request ID %d failed with unknown reason: %s", task.RequestID, err)
-			w.failedRequestCh <- FailResponse{task, *res, wrappedErr}
+			w.failedRequestsCh <- FailResponse{task, *res, wrappedErr}
 			return
 		}
 	}
 
-	w.failedRequestCh <- FailResponse{task, client.OracleResult{}, types.ErrTimedOut}
+	w.failedRequestsCh <- FailResponse{task, client.OracleResult{}, types.ErrTimedOut}
 }

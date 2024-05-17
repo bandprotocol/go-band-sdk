@@ -28,7 +28,7 @@ func New[T, U any](
 	return &Middleware[T, U]{inCh: inCh, outCh: outCh, chain: handlerChain[0]}
 }
 
-func (m *Middleware[T, U]) Run() {
+func (m *Middleware[T, U]) Start() {
 	// Note: Add non-blocking middleware (eg. success middleware
 	// that we just want to log/save to DB but don't want to wait to finish)
 	for {

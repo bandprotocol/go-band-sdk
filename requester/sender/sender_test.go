@@ -84,7 +84,7 @@ func TestSenderWithSuccess(t *testing.T) {
 	timeout := time.After(10 * time.Second)
 	for {
 		select {
-		case <-s.SuccessRequestsCh():
+		case <-s.SuccessfulRequestsCh():
 			return
 		case <-s.FailedRequestsCh():
 			t.Errorf("expected a successful response")
@@ -139,7 +139,7 @@ func TestSenderWithFailure(t *testing.T) {
 	timeout := time.After(10 * time.Second)
 	for {
 		select {
-		case <-s.SuccessRequestsCh():
+		case <-s.SuccessfulRequestsCh():
 			t.Errorf("expected a failed response")
 		case <-s.FailedRequestsCh():
 			return
@@ -179,7 +179,7 @@ func TestSenderWithClientError(t *testing.T) {
 	timeout := time.After(10 * time.Second)
 	for {
 		select {
-		case <-s.SuccessRequestsCh():
+		case <-s.SuccessfulRequestsCh():
 			t.Errorf("expected a failed response")
 		case <-s.FailedRequestsCh():
 			return

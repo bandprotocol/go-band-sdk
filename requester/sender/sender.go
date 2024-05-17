@@ -25,7 +25,7 @@ type Sender struct {
 	// Channel
 	requestQueueCh       chan Task
 	successfulRequestsCh chan SuccessResponse
-	failedRequestCh      chan FailResponse
+	failedRequestsCh     chan FailResponse
 }
 
 func NewSender(
@@ -58,16 +58,16 @@ func NewSender(
 		pollingDelay:         pollingDelay,
 		requestQueueCh:       requestQueueCh,
 		successfulRequestsCh: make(chan SuccessResponse, successChBufferSize),
-		failedRequestCh:      make(chan FailResponse, failureChBufferSize),
+		failedRequestsCh:     make(chan FailResponse, failureChBufferSize),
 	}, nil
 }
 
-func (s *Sender) SuccessRequestsCh() <-chan SuccessResponse {
+func (s *Sender) SuccessfulRequestsCh() <-chan SuccessResponse {
 	return s.successfulRequestsCh
 }
 
 func (s *Sender) FailedRequestsCh() <-chan FailResponse {
-	return s.failedRequestCh
+	return s.failedRequestsCh
 }
 
 func (s *Sender) Start() {
@@ -101,15 +101,15 @@ func (s *Sender) request(task Task, key keyring.Record) {
 	// Handle error
 	if err != nil {
 		s.logger.Error("Sender", "failed to broadcast task ID(%d) with error: %s", task.ID(), err.Error())
-		s.failedRequestCh <- FailResponse{task, sdk.TxResponse{}, types.ErrBroadcastFailed.Wrapf(err.Error())}
+		s.failedRequestsCh <- FailResponse{task, sdk.TxResponse{}, types.ErrBroadcastFailed.Wrapf(err.Error())}
 		return
 	} else if resp != nil && resp.Code != 0 {
 		s.logger.Error("Sender", "failed to broadcast task ID(%d) with code %d", task.ID(), resp.Code)
-		s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed}
+		s.failedRequestsCh <- FailResponse{task, *resp, types.ErrBroadcastFailed}
 		return
 	} else if resp == nil {
 		s.logger.Error("Sender", "failed to broadcast task ID(%d) no response", task.ID())
-		s.failedRequestCh <- FailResponse{task, sdk.TxResponse{}, types.ErrUnknown}
+		s.failedRequestsCh <- FailResponse{task, sdk.TxResponse{}, types.ErrUnknown}
 		return
 	}
 
@@ -127,7 +127,7 @@ func (s *Sender) request(task Task, key keyring.Record) {
 
 		if resp.Code != 0 {
 			s.logger.Warning("Sender", "task ID(%d) failed with code %d", task.ID(), resp.Code)
-			s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf(resp.RawLog)}
+			s.failedRequestsCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf(resp.RawLog)}
 			return
 		}
 
@@ -136,5 +136,5 @@ func (s *Sender) request(task Task, key keyring.Record) {
 		return
 	}
 	s.logger.Error("Sender", "task ID(%d) has timed out", task.ID())
-	s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf("timed out")}
+	s.failedRequestsCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf("timed out")}
 }
