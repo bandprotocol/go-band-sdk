@@ -28,5 +28,6 @@ var (
 	ErrInsufficientFunds = New(3, "insufficient funds")
 	ErrUnconfirmedTx     = New(4, "tx wasn't confirmed within timeout")
 	ErrTimedOut          = New(5, "timed out")
+	ErrRequestExpired    = New(6, "request expired")
 	ErrUnknown           = New(999, "unexpected error")
 )
