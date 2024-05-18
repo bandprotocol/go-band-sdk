@@ -269,17 +269,24 @@ func (c RPC) GetSignature(signingID uint64) (*SigningResult, error) {
 
 	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
-			c.logger.Debug("GetSignature", "Try to get signature from %s", node.Remote())
+			c.logger.Debug("GetSignature", "Attempting to get signature from %s", node.Remote())
 
-			res, err := getSigningResult(c.ctx.WithClient(node), signingID)
+			res, err := getSigning(c.ctx.WithClient(node), signingID)
 			if err != nil {
 				c.logger.Warning(
 					"GetSignature",
-					"Fail to get signature from %s with error %s",
+					"Failed to get signature from %s with error %s",
 					node.Remote(), err,
 				)
 				failCh <- struct{}{}
 				return
+			}
+			if res.CurrentGroupSigningResult == nil {
+				c.logger.Warning(
+					"GetSignature",
+					"Failed to get signature from %s, signing ID: %d, no signing result from current group",
+					node.Remote(), signingID,
+				)
 			}
 
 			signingResult := convertSigningResponse(res)

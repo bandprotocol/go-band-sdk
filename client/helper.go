@@ -78,7 +78,7 @@ func getRequest(clientCtx client.Context, id uint64) (*oracletypes.QueryRequestR
 	return queryClient.Request(context.Background(), &oracletypes.QueryRequestRequest{RequestId: id})
 }
 
-func getSigningResult(clientCtx client.Context, signingID uint64) (*bandtsstypes.QuerySigningResponse, error) {
+func getSigning(clientCtx client.Context, signingID uint64) (*bandtsstypes.QuerySigningResponse, error) {
 	queryClient := bandtsstypes.NewQueryClient(clientCtx)
 	return queryClient.Signing(context.Background(), &bandtsstypes.QuerySigningRequest{SigningId: signingID})
 }

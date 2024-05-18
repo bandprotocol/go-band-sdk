@@ -6,13 +6,13 @@ import (
 	tsstypes "github.com/bandprotocol/chain/v2/x/tss/types"
 )
 
-// OracleResult stores necessary information for an oracle query result.
+// OracleResult stores the necessary information for an oracle query result.
 type OracleResult struct {
 	Result    *oracletypes.Result
 	SigningID bandtsstypes.SigningID
 }
 
-// SigningResult stores necessary information for a signing request result.
+// SigningResult stores the necessary information for a signing request result.
 type SigningResult struct {
 	CurrentGroup   SigningInfo
 	ReplacingGroup SigningInfo
