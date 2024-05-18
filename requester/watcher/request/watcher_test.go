@@ -6,7 +6,6 @@ import (
 	"time"
 
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"go.uber.org/mock/gomock"
 
 	"github.com/bandprotocol/go-band-sdk/client"
@@ -46,17 +45,6 @@ func TestWatcher(t *testing.T) {
 
 	task := request.Task{
 		RequestID: 1,
-		Msg: oracletypes.MsgRequestData{
-			OracleScriptID: 1,
-			Calldata:       []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
-			AskCount:       16,
-			MinCount:       10,
-			ClientID:       "test",
-			FeeLimit:       sdk.NewCoins(sdk.NewCoin("uband", sdk.NewInt(1000000))),
-			PrepareGas:     0,
-			ExecuteGas:     0,
-			Sender:         "",
-		},
 	}
 	timeout := time.After(5 * time.Second)
 
@@ -108,18 +96,7 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
 	go w.Start()
 
-	msg := oracletypes.MsgRequestData{
-		OracleScriptID: 1,
-		Calldata:       []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
-		AskCount:       16,
-		MinCount:       10,
-		ClientID:       "test",
-		FeeLimit:       sdk.NewCoins(sdk.NewCoin("uband", sdk.NewInt(1000000))),
-		PrepareGas:     0,
-		ExecuteGas:     0,
-		Sender:         "",
-	}
-	task := request.NewTask(1, 1, msg)
+	task := request.NewTask(1, 1)
 	timeout := time.After(10 * time.Second)
 
 	watcherCh <- task
@@ -153,18 +130,7 @@ func TestWatcherWithTimeout(t *testing.T) {
 	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
 	go w.Start()
 
-	msg := oracletypes.MsgRequestData{
-		OracleScriptID: 1,
-		Calldata:       []byte{1, 2, 3, 4, 5, 6, 7, 8, 9},
-		AskCount:       16,
-		MinCount:       10,
-		ClientID:       "test",
-		FeeLimit:       sdk.NewCoins(sdk.NewCoin("uband", sdk.NewInt(1000000))),
-		PrepareGas:     0,
-		ExecuteGas:     0,
-		Sender:         "",
-	}
-	task := request.NewTask(1, 1, msg)
+	task := request.NewTask(1, 1)
 	timeout := time.After(10 * time.Second)
 
 	watcherCh <- task

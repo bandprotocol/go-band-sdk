@@ -13,7 +13,7 @@ func IntoRequestWatcherTaskHandler(ctx sender.SuccessResponse) (request.Task, er
 		return request.Task{}, err
 	}
 
-	return request.NewTask(ctx.ID(), requestID, ctx.Msg), nil
+	return request.NewTask(ctx.ID(), requestID), nil
 }
 
 func IntoSenderTaskHandler(ctx sender.FailResponse) (sender.Task, error) {
