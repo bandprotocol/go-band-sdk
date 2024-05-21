@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -326,7 +327,7 @@ func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key 
 	txf := c.txFactory.WithAccountNumber(acc.GetAccountNumber()).WithSequence(acc.GetSequence())
 	// Estimate gas
 	gasCh := make(chan uint64, len(c.nodes))
-	failCh := make(chan struct{}, len(c.nodes))
+	failCh := make(chan error, len(c.nodes))
 
 	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
@@ -338,7 +339,7 @@ func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key 
 					"Fail to estimate tx gas from %s with error %s",
 					node.Remote(), err,
 				)
-				failCh <- struct{}{}
+				failCh <- err
 			} else {
 				gasCh <- gas
 			}
@@ -347,20 +348,27 @@ func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key 
 
 	gas := uint64(0)
 
+	var gasErr error
 Gas:
 	for range c.nodes {
 		select {
 		case gas = <-gasCh:
 			// Return the first result that we found
+			gasErr = nil
 			break Gas
-		case <-failCh:
+		case err := <-failCh:
+			// Check if all endpoints return the same error.
+			if gasErr == nil {
+				gasErr = err
+			} else if !errors.Is(gasErr, err) {
+				gasErr = fmt.Errorf("fail to estimate gas")
+			}
 		}
 	}
 
 	// If all endpoint fail to estimate gas return error
-	// TODO: Find a way to extract error to meaningful response that able to handle by caller
-	if gas == 0 {
-		return nil, fmt.Errorf("fail to estimate gas")
+	if gasErr != nil {
+		return nil, gasErr
 	}
 
 	// Build unsigned tx with estimated gas
