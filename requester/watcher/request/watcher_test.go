@@ -41,7 +41,7 @@ func TestWatcher(t *testing.T) {
 
 	watcherCh := make(chan request.Task, 100)
 
-	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
+	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 	go w.Start()
 
 	task := request.Task{
@@ -100,12 +100,13 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 
 	mockClient := mockclient.NewMockClient(ctrl)
 	mockClient.EXPECT().GetResult(gomock.Any()).Return(&res, nil).Times(1)
+	mockClient.EXPECT().QueryRequestFailureReason(gomock.Any()).Return("unknown", nil).Times(1)
 
 	mockLogger := logging.NewLogger()
 
 	watcherCh := make(chan request.Task, 100)
 
-	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
+	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 	go w.Start()
 
 	msg := oracletypes.MsgRequestData{
@@ -150,7 +151,7 @@ func TestWatcherWithTimeout(t *testing.T) {
 
 	watcherCh := make(chan request.Task, 100)
 
-	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
+	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 	go w.Start()
 
 	msg := oracletypes.MsgRequestData{

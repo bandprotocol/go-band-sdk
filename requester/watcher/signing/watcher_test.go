@@ -57,7 +57,7 @@ func TestWatcherSuccess(t *testing.T) {
 
 			watcherCh := make(chan signing.Task, 100)
 
-			w := signing.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
+			w := signing.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 			go w.Start()
 
 			task := signing.NewTask(1, 1)
@@ -152,7 +152,7 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 
 			watcherCh := make(chan signing.Task, 100)
 
-			w := signing.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
+			w := signing.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 			go w.Start()
 
 			task := signing.NewTask(1, 1)
@@ -188,7 +188,7 @@ func TestWatcherWithTimeout(t *testing.T) {
 
 	watcherCh := make(chan signing.Task, 100)
 
-	w := signing.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
+	w := signing.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 	go w.Start()
 
 	task := signing.NewTask(1, 1)

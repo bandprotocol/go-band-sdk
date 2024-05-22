@@ -37,8 +37,6 @@ func NewSender(
 	timeout time.Duration,
 	pollingDelay time.Duration,
 	requestQueueCh chan Task,
-	successChBufferSize int,
-	failureChBufferSize int,
 ) (*Sender, error) {
 	infos, err := kr.List()
 	if err != nil {
@@ -58,8 +56,8 @@ func NewSender(
 		timeout:              timeout,
 		pollingDelay:         pollingDelay,
 		requestQueueCh:       requestQueueCh,
-		successfulRequestsCh: make(chan SuccessResponse, successChBufferSize),
-		failedRequestsCh:     make(chan FailResponse, failureChBufferSize),
+		successfulRequestsCh: make(chan SuccessResponse, cap(requestQueueCh)),
+		failedRequestsCh:     make(chan FailResponse, cap(requestQueueCh)),
 	}, nil
 }
 

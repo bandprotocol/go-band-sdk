@@ -37,7 +37,7 @@ func SetupSender(cl client.Client, l logging.Logger, reqCh chan sender.Task) (*s
 		return nil, err
 	}
 
-	return sender.NewSender(cl, l, kr, 1.0, 5*time.Second, 1*time.Second, reqCh, 1, 1)
+	return sender.NewSender(cl, l, kr, 1.0, 5*time.Second, 1*time.Second, reqCh)
 }
 
 func TestSenderWithSuccess(t *testing.T) {
