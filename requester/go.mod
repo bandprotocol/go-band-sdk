@@ -6,7 +6,6 @@ require (
 	github.com/bandprotocol/chain/v2 v2.5.5-0.20240503145406-b6ed5a969335
 	github.com/bandprotocol/go-band-sdk/client v1.0.1
 	github.com/bandprotocol/go-band-sdk/utils v1.0.1
-	github.com/bandprotocol/go-owasm v0.3.1
 	github.com/cosmos/cosmos-sdk v0.47.11
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/mock v0.4.0
@@ -32,6 +31,7 @@ require (
 	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-sdk-go v1.44.203 // indirect
+	github.com/bandprotocol/go-owasm v0.3.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
 	github.com/bgentry/speakeasy v0.1.1-0.20220910012023-760eaf8b6816 // indirect

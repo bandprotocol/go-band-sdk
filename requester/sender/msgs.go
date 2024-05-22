@@ -37,9 +37,9 @@ type SuccessResponse struct {
 type FailResponse struct {
 	Task
 	TxResponse sdk.TxResponse
-	error      types.Error
+	Err        types.Error
 }
 
 func (r FailResponse) Error() string {
-	return r.error.Error()
+	return r.Err.Error()
 }

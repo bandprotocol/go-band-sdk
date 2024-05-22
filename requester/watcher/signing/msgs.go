@@ -35,9 +35,9 @@ type SuccessResponse struct {
 type FailResponse struct {
 	Task
 	client.SigningResult
-	error types.Error
+	Err types.Error
 }
 
 func (r FailResponse) Error() string {
-	return r.error.Error()
+	return r.Err.Error()
 }
