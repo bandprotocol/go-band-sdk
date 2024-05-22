@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"testing"
+	"time"
 
 	band "github.com/bandprotocol/chain/v2/app"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
@@ -21,7 +22,7 @@ func TestEstimateGas(t *testing.T) {
 	appConfig := sdk.GetConfig()
 	band.SetBech32AddressPrefixesAndBip44CoinTypeAndSeal(appConfig)
 	chainID := "band-laozi-testnet6"
-	rpc, err := newRPCClient("https://rpc.laozi-testnet6.bandchain.org:443", "10s")
+	rpc, err := newRPCClient("https://rpc.laozi-testnet6.bandchain.org:443", 10*time.Second)
 	require.NoError(t, err)
 
 	// Setup codec

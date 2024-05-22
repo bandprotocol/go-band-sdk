@@ -89,6 +89,21 @@ func (mr *MockClientMockRecorder) GetBlockResult(height any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockResult", reflect.TypeOf((*MockClient)(nil).GetBlockResult), height)
 }
 
+// GetRequestProofByID mocks base method.
+func (m *MockClient) GetRequestProofByID(reqID uint64) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRequestProofByID", reqID)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRequestProofByID indicates an expected call of GetRequestProofByID.
+func (mr *MockClientMockRecorder) GetRequestProofByID(reqID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRequestProofByID", reflect.TypeOf((*MockClient)(nil).GetRequestProofByID), reqID)
+}
+
 // GetResult mocks base method.
 func (m *MockClient) GetResult(id uint64) (*client.OracleResult, error) {
 	m.ctrl.T.Helper()

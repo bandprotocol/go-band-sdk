@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"time"
 
 	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
@@ -37,7 +38,7 @@ func NewRPC(
 	logger logging.Logger,
 	endpoints []string,
 	chainID string,
-	timeout string,
+	timeout time.Duration,
 	gasPrice string,
 	keyring keyring.Keyring,
 ) (*RPC, error) {
@@ -417,6 +418,58 @@ Gas:
 			// Return the first tx response that we found
 			return res, nil
 		case <-errorCh:
+		}
+	}
+	// If the tx cannot broadcast to all nodes, return an error
+	return nil, fmt.Errorf("failed to find transaction from all endpoints")
+}
+
+// GetRequestProofByID fetches and returns the EVM proof for the given request ID from the REST endpoint.
+func (c RPC) GetRequestProofByID(reqID uint64) ([]byte, error) {
+	resultCh := make(chan []byte, len(c.nodes))
+	failCh := make(chan struct{}, len(c.nodes))
+
+	for _, node := range c.nodes {
+		go func(node *rpchttp.HTTP) {
+			height, err := getProofHeight(c.ctx.WithClient(node), reqID)
+			if err != nil {
+				c.logger.Warning("GetRequestProofByID", "can't get proof height from %s; %s", node.Remote(), err)
+				failCh <- struct{}{}
+				return
+			}
+
+			b, err := c.ctx.WithClient(node).Client.Block(context.Background(), nil)
+			if err != nil {
+				c.logger.Warning("GetRequestProofByID", "can't get latest block from %s; %s", node.Remote(), err)
+				failCh <- struct{}{}
+				return
+			} else if b.Block.Height <= height {
+				c.logger.Warning(
+					"GetRequestProofByID",
+					"latest block height is less than proof height from %s",
+					node.Remote(),
+				)
+				failCh <- struct{}{}
+				return
+			}
+
+			evmProofBytes, err := getRequestProof(c.ctx.WithClient(node), reqID, height)
+			if err != nil {
+				c.logger.Warning("GetRequestProofByID", "can't get proof bytes from %s; %s", node.Remote(), err)
+				failCh <- struct{}{}
+				return
+			}
+
+			resultCh <- evmProofBytes
+		}(node)
+	}
+
+	for range c.nodes {
+		select {
+		case res := <-resultCh:
+			// Return the first tx response that we found
+			return res, nil
+		case <-failCh:
 		}
 	}
 	// If the tx cannot broadcast to all nodes, return an error

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	band "github.com/bandprotocol/chain/v2/app"
+	proofservice "github.com/bandprotocol/chain/v2/client/grpc/oracle/proof"
 	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
@@ -35,18 +36,13 @@ func NewClientCtx(chainID string) client.Context {
 		WithViper("requester")
 }
 
-func newRPCClient(addr, timeout string) (*rpchttp.HTTP, error) {
-	to, err := time.ParseDuration(timeout)
-	if err != nil {
-		return nil, err
-	}
-
+func newRPCClient(addr string, timeout time.Duration) (*rpchttp.HTTP, error) {
 	httpClient, err := libclient.DefaultHTTPClient(addr)
 	if err != nil {
 		return nil, err
 	}
 
-	httpClient.Timeout = to
+	httpClient.Timeout = timeout
 	rpcClient, err := rpchttp.NewWithClient(addr, "/websocket", httpClient)
 	if err != nil {
 		return nil, err
@@ -127,4 +123,28 @@ func convertSigningResponse(resp *bandtsstypes.QuerySigningResponse) SigningResu
 	}
 
 	return res
+}
+
+func getRequestProof(clientCtx client.Context, reqID uint64, height int64) ([]byte, error) {
+	queryClient := proofservice.NewProofServer(clientCtx)
+	resp, err := queryClient.Proof(
+		context.Background(), &proofservice.QueryProofRequest{RequestId: reqID, Height: height},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.Result.EvmProofBytes, nil
+}
+
+func getProofHeight(clientCtx client.Context, reqID uint64) (int64, error) {
+	queryClient := proofservice.NewProofServer(clientCtx)
+	resp, err := queryClient.Proof(
+		context.Background(), &proofservice.QueryProofRequest{RequestId: reqID, Height: 0},
+	)
+	if err != nil {
+		return 0, err
+	}
+
+	return resp.Height, nil
 }

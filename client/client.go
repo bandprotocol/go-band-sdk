@@ -17,4 +17,5 @@ type Client interface {
 	QueryRequestFailureReason(id uint64) (string, error)
 	GetBalance(account sdk.AccAddress) (uint64, error)
 	SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key keyring.Record) (*sdk.TxResponse, error)
+	GetRequestProofByID(reqID uint64) ([]byte, error)
 }
