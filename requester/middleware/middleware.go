@@ -1,9 +1,19 @@
 package middleware
 
+type ErrMiddleware[T any] struct {
+	Err   error
+	Input T
+}
+
+func (e ErrMiddleware[T]) Error() string {
+	return e.Err.Error()
+}
+
 type Middleware[T, U any] struct {
-	inCh  <-chan T
-	outCh chan<- U
-	chain HandlerFunc[T, U]
+	inCh     <-chan T
+	errOutCh chan ErrMiddleware[T]
+	outCh    chan<- U
+	chain    HandlerFunc[T, U]
 }
 
 func New[T, U any](
@@ -12,6 +22,7 @@ func New[T, U any](
 	parser HandlerFunc[T, U],
 	handlers ...Handler[T, U],
 ) *Middleware[T, U] {
+	errOutCh := make(chan ErrMiddleware[T], cap(outCh))
 	handlerChain := make([]HandlerFunc[T, U], len(handlers)+1)
 	if len(handlers) == 0 {
 		return &Middleware[T, U]{inCh: inCh, outCh: outCh, chain: parser}
@@ -25,7 +36,7 @@ func New[T, U any](
 		}
 	}
 
-	return &Middleware[T, U]{inCh: inCh, outCh: outCh, chain: handlerChain[0]}
+	return &Middleware[T, U]{inCh: inCh, outCh: outCh, errOutCh: errOutCh, chain: handlerChain[0]}
 }
 
 func (m *Middleware[T, U]) Start() {
@@ -36,9 +47,14 @@ func (m *Middleware[T, U]) Start() {
 		go func(in T) {
 			out, err := m.chain(in)
 			if err != nil {
+				m.errOutCh <- ErrMiddleware[T]{Err: err, Input: in}
 				return
 			}
 			m.outCh <- out
 		}(in)
 	}
+}
+
+func (m *Middleware[T, U]) ErrOutCh() <-chan ErrMiddleware[T] {
+	return m.errOutCh
 }
