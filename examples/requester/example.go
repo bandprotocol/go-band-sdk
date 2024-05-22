@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/hex"
+	"fmt"
 	"os"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/middleware"
 	"github.com/bandprotocol/go-band-sdk/requester/middleware/handlers/delay"
+	"github.com/bandprotocol/go-band-sdk/requester/middleware/handlers/gas"
 	"github.com/bandprotocol/go-band-sdk/requester/middleware/handlers/retry"
 	"github.com/bandprotocol/go-band-sdk/requester/middleware/parser"
 	"github.com/bandprotocol/go-band-sdk/requester/sender"
@@ -27,10 +29,10 @@ import (
 )
 
 type ChainConfig struct {
-	ChainID string `yaml:"chain_id" mapstructure:"chain_id"`
-	RPC     string `yaml:"rpc" mapstructure:"rpc"`
-	Fee     string `yaml:"fee" mapstructure:"fee"`
-	Timeout string `yaml:"timeout" mapstructure:"timeout"`
+	ChainID string        `yaml:"chain_id" mapstructure:"chain_id"`
+	RPC     string        `yaml:"rpc" mapstructure:"rpc"`
+	Fee     string        `yaml:"fee" mapstructure:"fee"`
+	Timeout time.Duration `yaml:"timeout" mapstructure:"timeout"`
 }
 
 type RequestConfig struct {
@@ -101,47 +103,69 @@ func requestOracleData(
 	// Setup Sender and Watcher
 	senderCh := make(chan sender.Task, 5)
 	watcherCh := make(chan request.Task, 5)
+	resCh := make(chan client.OracleResult, 5)
 
-	s, err := sender.NewSender(cli, log, kr, 0.0025, 60*time.Second, 3*time.Second, senderCh, 5, 5)
+	s, err := sender.NewSender(cli, log, kr, 0.0025, 60*time.Second, 3*time.Second, senderCh)
 	if err != nil {
 		return client.OracleResult{}, err
 	}
-	w := request.NewWatcher(cli, log, 60*time.Second, 3*time.Second, watcherCh, 5, 5)
+	w := request.NewWatcher(cli, log, 60*time.Second, 3*time.Second, watcherCh)
 
 	// Setup handlers and middlewares
 	f := retry.NewHandlerFactory(3, log)
 	retryHandler := retry.NewCounterHandler[sender.FailResponse, sender.Task](f)
-	resolveHandler := retry.NewResolverHandler[sender.SuccessResponse, request.Task](f)
+	resolveHandler := retry.NewResolverHandler[request.SuccessResponse, client.OracleResult](f)
 	delayHandler := delay.NewHandler[sender.FailResponse, sender.Task](3 * time.Second)
+	retryFromRequestHandler := retry.NewCounterHandler[request.FailResponse, sender.Task](f)
+	delayFromRequestHandler := delay.NewHandler[request.FailResponse, sender.Task](3 * time.Second)
+	adjustPrepareGasHandler := gas.NewInsufficientPrepareGasHandler(1.3, log)
+	adjustExecuteGasHandler := gas.NewInsufficientExecuteGasHandler(1.3, log)
 
-	retryMw := middleware.New(
-		s.FailedRequestsCh(), senderCh, parser.IntoSenderTaskHandler, retryHandler, delayHandler,
+	retrySenderMw := middleware.New(
+		s.FailedRequestsCh(), senderCh, parser.IntoSenderTaskHandler, retryHandler, delayHandler, adjustPrepareGasHandler,
+	)
+	retryRequestMw := middleware.New(
+		w.FailedRequestsCh(),
+		senderCh,
+		parser.IntoSenderTaskHandlerFromRequest,
+		retryFromRequestHandler,
+		delayFromRequestHandler,
+		adjustExecuteGasHandler,
+	)
+	senderToRequestMw := middleware.New(
+		s.SuccessfulRequestsCh(), watcherCh, parser.IntoRequestWatcherTaskHandler,
 	)
 	resolveMw := middleware.New(
-		s.SuccessfulRequestsCh(), watcherCh, parser.IntoRequestWatcherTaskHandler, resolveHandler,
+		w.SuccessfulRequestsCh(),
+		resCh,
+		func(ctx request.SuccessResponse) (client.OracleResult, error) { return ctx.OracleResult, nil },
+		resolveHandler,
 	)
 
 	// start
 	go s.Start()
 	go w.Start()
-	go retryMw.Start()
+	go retrySenderMw.Start()
+	go retryRequestMw.Start()
+	go senderToRequestMw.Start()
 	go resolveMw.Start()
 
 	senderCh <- sender.NewTask(1, msg)
-	for {
-		time.Sleep(10 * time.Second)
-		if len(w.FailedRequestsCh()) != 0 || len(w.SuccessfulRequestsCh()) != 0 {
-			break
-		}
-	}
 
-	if len(w.FailedRequestsCh()) != 0 {
-		failResp := <-w.FailedRequestsCh()
-		return client.OracleResult{}, failResp
+	select {
+	case <-time.After(100 * time.Second):
+		return client.OracleResult{}, fmt.Errorf("timeout")
+	case errResp := <-retrySenderMw.ErrOutCh():
+		return client.OracleResult{}, errResp
+	case errResp := <-retryRequestMw.ErrOutCh():
+		return client.OracleResult{}, errResp
+	case errResp := <-senderToRequestMw.ErrOutCh():
+		return client.OracleResult{}, errResp
+	case errResp := <-resolveMw.ErrOutCh():
+		return client.OracleResult{}, errResp
+	case resp := <-resCh:
+		return resp, nil
 	}
-
-	resp := <-w.SuccessfulRequestsCh()
-	return resp.OracleResult, nil
 }
 
 func getSigningResult(
@@ -151,27 +175,19 @@ func getSigningResult(
 ) (client.SigningResult, error) {
 	// Setup watcher.
 	watcherCh := make(chan signing.Task, 5)
-	w := signing.NewWatcher(cli, log, 60*time.Second, 3*time.Second, watcherCh, 5, 5)
+	w := signing.NewWatcher(cli, log, 60*time.Second, 3*time.Second, watcherCh)
 
 	// start
 	go w.Start()
 
 	// new task to query tss signing result.
 	watcherCh <- signing.NewTask(2, signingID)
-	for {
-		time.Sleep(10 * time.Second)
-		if len(w.FailedRequestsCh()) != 0 || len(w.SuccessfulRequestsCh()) != 0 {
-			break
-		}
-	}
-
-	if len(w.FailedRequestsCh()) != 0 {
-		failResp := <-w.FailedRequestsCh()
+	select {
+	case resp := <-w.SuccessfulRequestsCh():
+		return resp.SigningResult, nil
+	case failResp := <-w.FailedRequestsCh():
 		return client.SigningResult{}, failResp
 	}
-
-	resp := <-w.SuccessfulRequestsCh()
-	return resp.SigningResult, nil
 }
 
 func main() {
