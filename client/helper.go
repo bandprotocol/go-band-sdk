@@ -11,7 +11,6 @@ import (
 	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	tsstypes "github.com/bandprotocol/chain/v2/x/tss/types"
-	tmbytes "github.com/cometbft/cometbft/libs/bytes"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	libclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -105,16 +104,16 @@ func convertSigningResultToSigningInfo(res *tsstypes.SigningResult) SigningInfo 
 		return SigningInfo{}
 	}
 
-	var signing tmbytes.HexBytes
+	evmSig := tsstypes.EVMSignature{}
 	if res.EVMSignature != nil {
-		signing = res.EVMSignature.Signature
+		evmSig = *res.EVMSignature
 	}
 
 	return SigningInfo{
-		PubKey:  res.Signing.GroupPubKey,
-		Status:  res.Signing.Status,
-		Message: res.Signing.Message,
-		Signing: signing,
+		PubKey:       res.Signing.GroupPubKey,
+		Status:       res.Signing.Status,
+		Message:      res.Signing.Message,
+		EVMSignature: evmSig,
 	}
 }
 

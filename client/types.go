@@ -21,10 +21,10 @@ type SigningResult struct {
 
 // SigningInfo contains signing information.
 type SigningInfo struct {
-	Signing []byte
-	Status  tsstypes.SigningStatus
-	Message tmbytes.HexBytes
-	PubKey  []byte
+	EVMSignature tsstypes.EVMSignature
+	Status       tsstypes.SigningStatus
+	Message      tmbytes.HexBytes
+	PubKey       []byte
 }
 
 // SingleProof represents a single proof in a response.
