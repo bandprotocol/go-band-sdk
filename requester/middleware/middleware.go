@@ -25,7 +25,7 @@ func New[T, U any](
 	errOutCh := make(chan ErrMiddleware[T], cap(outCh))
 	handlerChain := make([]HandlerFunc[T, U], len(handlers)+1)
 	if len(handlers) == 0 {
-		return &Middleware[T, U]{inCh: inCh, outCh: outCh, chain: parser}
+		return &Middleware[T, U]{inCh: inCh, outCh: outCh, errOutCh: errOutCh, chain: parser}
 	}
 
 	handlerChain[len(handlers)] = parser

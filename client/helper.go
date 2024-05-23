@@ -10,6 +10,8 @@ import (
 	proofservice "github.com/bandprotocol/chain/v2/client/grpc/oracle/proof"
 	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
+	tsstypes "github.com/bandprotocol/chain/v2/x/tss/types"
+	tmbytes "github.com/cometbft/cometbft/libs/bytes"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	libclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -98,31 +100,22 @@ func GetRequestID(events []sdk.StringEvent) (uint64, error) {
 	return 0, fmt.Errorf("cannot find request id")
 }
 
-func convertSigningResponse(resp *bandtsstypes.QuerySigningResponse) SigningResult {
-	res := SigningResult{}
-	if resp.CurrentGroupSigningResult != nil {
-		info := SigningInfo{}
-		if resp.CurrentGroupSigningResult.EVMSignature != nil {
-			info.Signing = resp.CurrentGroupSigningResult.EVMSignature.Signature
-		}
-		info.PubKey = resp.CurrentGroupSigningResult.Signing.GroupPubKey
-		info.Status = resp.CurrentGroupSigningResult.Signing.Status
-
-		res.CurrentGroup = info
+func convertSigningResultToSigningInfo(res *tsstypes.SigningResult) SigningInfo {
+	if res == nil {
+		return SigningInfo{}
 	}
 
-	if resp.ReplacingGroupSigningResult != nil {
-		info := SigningInfo{}
-		if resp.ReplacingGroupSigningResult.EVMSignature != nil {
-			info.Signing = resp.ReplacingGroupSigningResult.EVMSignature.Signature
-		}
-		info.PubKey = resp.ReplacingGroupSigningResult.Signing.GroupPubKey
-		info.Status = resp.ReplacingGroupSigningResult.Signing.Status
-
-		res.ReplacingGroup = info
+	var signing tmbytes.HexBytes
+	if res.EVMSignature != nil {
+		signing = res.EVMSignature.Signature
 	}
 
-	return res
+	return SigningInfo{
+		PubKey:  res.Signing.GroupPubKey,
+		Status:  res.Signing.Status,
+		Message: res.Signing.Message,
+		Signing: signing,
+	}
 }
 
 func getRequestProof(clientCtx client.Context, reqID uint64, height int64) ([]byte, error) {

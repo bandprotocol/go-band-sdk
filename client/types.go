@@ -23,6 +23,7 @@ type SigningResult struct {
 type SigningInfo struct {
 	Signing []byte
 	Status  tsstypes.SigningStatus
+	Message tmbytes.HexBytes
 	PubKey  []byte
 }
 

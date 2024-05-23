@@ -291,7 +291,10 @@ func (c RPC) GetSignature(signingID uint64) (*SigningResult, error) {
 				)
 			}
 
-			signingResult := convertSigningResponse(res)
+			signingResult := SigningResult{
+				CurrentGroup:   convertSigningResultToSigningInfo(res.CurrentGroupSigningResult),
+				ReplacingGroup: convertSigningResultToSigningInfo(res.ReplacingGroupSigningResult),
+			}
 			resultCh <- &signingResult
 		}(node)
 	}
