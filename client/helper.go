@@ -111,8 +111,8 @@ func convertSigningResultToSigningInfo(res *tsstypes.SigningResult) SigningInfo 
 
 	return SigningInfo{
 		PubKey:       res.Signing.GroupPubKey,
+		PubNonce:     res.Signing.GroupPubNonce,
 		Status:       res.Signing.Status,
-		Message:      res.Signing.Message,
 		EVMSignature: evmSig,
 	}
 }

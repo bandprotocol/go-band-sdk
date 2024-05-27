@@ -23,8 +23,8 @@ type SigningResult struct {
 type SigningInfo struct {
 	EVMSignature tsstypes.EVMSignature
 	Status       tsstypes.SigningStatus
-	Message      tmbytes.HexBytes
 	PubKey       []byte
+	PubNonce     []byte
 }
 
 // SingleProof represents a single proof in a response.

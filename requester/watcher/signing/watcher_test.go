@@ -23,9 +23,13 @@ func TestWatcherSuccess(t *testing.T) {
 			name: "only currentGroup",
 			res: client.SigningResult{
 				CurrentGroup: client.SigningInfo{
-					Signing: []byte("signature1"),
-					Status:  tsstypes.SIGNING_STATUS_SUCCESS,
-					PubKey:  []byte("pubkey1"),
+					EVMSignature: tsstypes.EVMSignature{
+						RAddress:  []byte("rAddress1"),
+						Signature: []byte("signature1"),
+					},
+					Status:   tsstypes.SIGNING_STATUS_SUCCESS,
+					PubKey:   []byte("pubkey1"),
+					PubNonce: []byte("pubnonce1"),
 				},
 				ReplacingGroup: client.SigningInfo{},
 			},
@@ -34,14 +38,22 @@ func TestWatcherSuccess(t *testing.T) {
 			name: "both current and replacing group",
 			res: client.SigningResult{
 				CurrentGroup: client.SigningInfo{
-					Signing: []byte("signature1"),
-					Status:  tsstypes.SIGNING_STATUS_SUCCESS,
-					PubKey:  []byte("pubkey1"),
+					EVMSignature: tsstypes.EVMSignature{
+						RAddress:  []byte("rAddress1"),
+						Signature: []byte("signature1"),
+					},
+					Status:   tsstypes.SIGNING_STATUS_SUCCESS,
+					PubKey:   []byte("pubkey1"),
+					PubNonce: []byte("pubnonce1"),
 				},
 				ReplacingGroup: client.SigningInfo{
-					Signing: []byte("signature2"),
-					Status:  tsstypes.SIGNING_STATUS_SUCCESS,
-					PubKey:  []byte("pubkey2"),
+					EVMSignature: tsstypes.EVMSignature{
+						RAddress:  []byte("rAddress2"),
+						Signature: []byte("signature2"),
+					},
+					Status:   tsstypes.SIGNING_STATUS_SUCCESS,
+					PubKey:   []byte("pubkey2"),
+					PubNonce: []byte("pubnonce2"),
 				},
 			},
 		},
@@ -92,9 +104,13 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 			name: "fail due to current group status fallen",
 			res: client.SigningResult{
 				CurrentGroup: client.SigningInfo{
-					Signing: []byte("signature1"),
-					Status:  tsstypes.SIGNING_STATUS_FALLEN,
-					PubKey:  []byte("pubkey1"),
+					EVMSignature: tsstypes.EVMSignature{
+						RAddress:  []byte("rAddress1"),
+						Signature: []byte("signature1"),
+					},
+					Status:   tsstypes.SIGNING_STATUS_FALLEN,
+					PubKey:   []byte("pubkey1"),
+					PubNonce: []byte("pubnonce1"),
 				},
 				ReplacingGroup: client.SigningInfo{},
 			},
@@ -103,9 +119,13 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 			name: "fail due to current group status expired",
 			res: client.SigningResult{
 				CurrentGroup: client.SigningInfo{
-					Signing: []byte("signature1"),
-					Status:  tsstypes.SIGNING_STATUS_EXPIRED,
-					PubKey:  []byte("pubkey1"),
+					EVMSignature: tsstypes.EVMSignature{
+						RAddress:  []byte("rAddress1"),
+						Signature: []byte("signature1"),
+					},
+					Status:   tsstypes.SIGNING_STATUS_EXPIRED,
+					PubKey:   []byte("pubKey1"),
+					PubNonce: []byte("pubNonce1"),
 				},
 				ReplacingGroup: client.SigningInfo{},
 			},
@@ -114,14 +134,22 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 			name: "fail due to replacing group status fallen",
 			res: client.SigningResult{
 				CurrentGroup: client.SigningInfo{
-					Signing: []byte("signature1"),
-					Status:  tsstypes.SIGNING_STATUS_SUCCESS,
-					PubKey:  []byte("pubkey1"),
+					EVMSignature: tsstypes.EVMSignature{
+						RAddress:  []byte("rAddress1"),
+						Signature: []byte("signature1"),
+					},
+					Status:   tsstypes.SIGNING_STATUS_SUCCESS,
+					PubKey:   []byte("pubKey1"),
+					PubNonce: []byte("pubNonce1"),
 				},
 				ReplacingGroup: client.SigningInfo{
-					Signing: []byte("signature2"),
-					Status:  tsstypes.SIGNING_STATUS_FALLEN,
-					PubKey:  []byte("pubkey2"),
+					EVMSignature: tsstypes.EVMSignature{
+						RAddress:  []byte("rAddress2"),
+						Signature: []byte("signature2"),
+					},
+					Status:   tsstypes.SIGNING_STATUS_FALLEN,
+					PubKey:   []byte("pubKey2"),
+					PubNonce: []byte("pubNonce2"),
 				},
 			},
 		},
@@ -129,14 +157,22 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 			name: "fail due to replacing group status expired",
 			res: client.SigningResult{
 				CurrentGroup: client.SigningInfo{
-					Signing: []byte("signature1"),
-					Status:  tsstypes.SIGNING_STATUS_SUCCESS,
-					PubKey:  []byte("pubkey1"),
+					EVMSignature: tsstypes.EVMSignature{
+						RAddress:  []byte("rAddress1"),
+						Signature: []byte("signature1"),
+					},
+					Status:   tsstypes.SIGNING_STATUS_SUCCESS,
+					PubKey:   []byte("pubKey1"),
+					PubNonce: []byte("pubNonce1"),
 				},
 				ReplacingGroup: client.SigningInfo{
-					Signing: []byte("signature2"),
-					Status:  tsstypes.SIGNING_STATUS_EXPIRED,
-					PubKey:  []byte("pubkey2"),
+					EVMSignature: tsstypes.EVMSignature{
+						RAddress:  []byte("rAddress2"),
+						Signature: []byte("signature2"),
+					},
+					Status:   tsstypes.SIGNING_STATUS_EXPIRED,
+					PubKey:   []byte("pubKey2"),
+					PubNonce: []byte("pubNonce2"),
 				},
 			},
 		},
