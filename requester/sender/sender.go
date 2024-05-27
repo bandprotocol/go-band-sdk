@@ -8,6 +8,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
+	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
 	"github.com/bandprotocol/go-band-sdk/utils/logging"
@@ -93,10 +94,15 @@ func (s *Sender) request(task Task, key keyring.Record) {
 		s.logger.Error("Sender", "failed to get address from key: %s", err.Error())
 		return
 	}
-	task.Msg.Sender = addr.String()
+
+	// Change the sender with the actual sender if the message is Oracle MsgRequestData
+	if msg, ok := task.Msg.(*oracletypes.MsgRequestData); ok {
+		msg.Sender = addr.String()
+		task.Msg = msg
+	}
 
 	// Attempt to send the request
-	resp, err := s.client.SendRequest(&task.Msg, s.gasPrice, key)
+	resp, err := s.client.SendRequest(task.Msg, s.gasPrice, key)
 	// Handle error
 	if err != nil {
 		s.logger.Error("Sender", "failed to broadcast task ID(%d) with error: %s", task.ID(), err.Error())

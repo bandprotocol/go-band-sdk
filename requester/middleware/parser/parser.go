@@ -1,6 +1,11 @@
 package parser
 
 import (
+	"fmt"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
+	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/sender"
 	"github.com/bandprotocol/go-band-sdk/requester/watcher/request"
@@ -13,7 +18,12 @@ func IntoRequestWatcherTaskHandler(ctx sender.SuccessResponse) (request.Task, er
 		return request.Task{}, err
 	}
 
-	return request.NewTask(ctx.ID(), requestID, ctx.Msg), nil
+	msg, ok := ctx.Msg.(*oracletypes.MsgRequestData)
+	if !ok {
+		return request.Task{}, fmt.Errorf("message type is not MsgRequestData")
+	}
+
+	return request.NewTask(ctx.ID(), requestID, *msg), nil
 }
 
 func IntoSenderTaskHandler(ctx sender.FailResponse) (sender.Task, error) {
@@ -25,5 +35,5 @@ func IntoSigningWatcherTaskHandler(ctx signing.FailResponse) (signing.Task, erro
 }
 
 func IntoSenderTaskHandlerFromRequest(ctx request.FailResponse) (sender.Task, error) {
-	return sender.NewTask(ctx.ID(), ctx.Msg), nil
+	return sender.NewTask(ctx.ID(), sdk.Msg(&ctx.Msg)), nil
 }

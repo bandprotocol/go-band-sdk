@@ -30,20 +30,20 @@ import (
 
 type ChainConfig struct {
 	ChainID string        `yaml:"chain_id" mapstructure:"chain_id"`
-	RPC     string        `yaml:"rpc" mapstructure:"rpc"`
-	Fee     string        `yaml:"fee" mapstructure:"fee"`
-	Timeout time.Duration `yaml:"timeout" mapstructure:"timeout"`
+	RPC     string        `yaml:"rpc"      mapstructure:"rpc"`
+	Fee     string        `yaml:"fee"      mapstructure:"fee"`
+	Timeout time.Duration `yaml:"timeout"  mapstructure:"timeout"`
 }
 
 type RequestConfig struct {
 	OracleScriptID int    `yaml:"oracle_script_id" mapstructure:"oracle_script_id"`
-	Calldata       string `yaml:"calldata" mapstructure:"calldata"`
-	Mnemonic       string `yaml:"mnemonic" mapstructure:"mnemonic"`
+	Calldata       string `yaml:"calldata"         mapstructure:"calldata"`
+	Mnemonic       string `yaml:"mnemonic"         mapstructure:"mnemonic"`
 }
 
 type Config struct {
-	Chain    ChainConfig   `yaml:"chain" mapstructure:"chain"`
-	Request  RequestConfig `yaml:"request" mapstructure:"request"`
+	Chain    ChainConfig   `yaml:"chain"     mapstructure:"chain"`
+	Request  RequestConfig `yaml:"request"   mapstructure:"request"`
 	LogLevel string        `yaml:"log_level" mapstructure:"log_level"`
 	SDK      *sdk.Config
 }
@@ -122,7 +122,12 @@ func requestOracleData(
 	adjustExecuteGasHandler := gas.NewInsufficientExecuteGasHandler(1.3, log)
 
 	retrySenderMw := middleware.New(
-		s.FailedRequestsCh(), senderCh, parser.IntoSenderTaskHandler, retryHandler, delayHandler, adjustPrepareGasHandler,
+		s.FailedRequestsCh(),
+		senderCh,
+		parser.IntoSenderTaskHandler,
+		retryHandler,
+		delayHandler,
+		adjustPrepareGasHandler,
 	)
 	retryRequestMw := middleware.New(
 		w.FailedRequestsCh(),
@@ -150,7 +155,7 @@ func requestOracleData(
 	go senderToRequestMw.Start()
 	go resolveMw.Start()
 
-	senderCh <- sender.NewTask(1, msg)
+	senderCh <- sender.NewTask(1, &msg)
 
 	select {
 	case <-time.After(100 * time.Second):
@@ -192,7 +197,7 @@ func getSigningResult(
 
 func main() {
 	// Setup
-	config_file := GetEnv("CONFIG_FILE", "example_band_laozi.yaml")
+	config_file := GetEnv("CONFIG_FILE", "example_local.yaml")
 	config, err := GetConfig(config_file)
 	if err != nil {
 		panic(err)

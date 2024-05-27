@@ -1,7 +1,6 @@
 package sender
 
 import (
-	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/bandprotocol/go-band-sdk/requester/types"
@@ -15,10 +14,10 @@ var (
 
 type Task struct {
 	id  uint64
-	Msg oracletypes.MsgRequestData
+	Msg sdk.Msg
 }
 
-func NewTask(id uint64, msg oracletypes.MsgRequestData) Task {
+func NewTask(id uint64, msg sdk.Msg) Task {
 	return Task{
 		id:  id,
 		Msg: msg,

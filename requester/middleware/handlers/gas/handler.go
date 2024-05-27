@@ -3,6 +3,7 @@ package gas
 import (
 	"errors"
 
+	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	"github.com/bandprotocol/go-band-sdk/requester/middleware"
 	"github.com/bandprotocol/go-band-sdk/requester/sender"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
@@ -31,8 +32,14 @@ func (m *InsufficientPrepareGasHandler) Handle(
 	req, err := next(ctx)
 
 	if errors.Is(&ctx.Err, &types.ErrOutOfPrepareGas) {
-		req.Msg.PrepareGas = uint64(float64(req.Msg.PrepareGas) * m.gasMultiplier)
-		m.logger.Info("bump prepare gas", "bumping request %d prepare gas to %d", req.ID(), req.Msg.PrepareGas)
+		msg, ok := req.Msg.(*oracletypes.MsgRequestData)
+		if !ok {
+			return req, errors.New("message type is not MsgRequestData")
+		}
+
+		msg.PrepareGas = uint64(float64(msg.PrepareGas) * m.gasMultiplier)
+		req.Msg = msg
+		m.logger.Info("bump prepare gas", "bumping request %d prepare gas to %d", req.ID(), msg.PrepareGas)
 	}
 	return req, err
 }
@@ -53,8 +60,13 @@ func (m *InsufficientExecuteGasHandler) Handle(
 	task, err := next(ctx)
 
 	if errors.Is(&ctx.Err, &types.ErrOutOfExecuteGas) {
-		task.Msg.ExecuteGas = uint64(float64(task.Msg.ExecuteGas) * m.gasMultiplier)
-		m.logger.Info("bump execute gas", "bumping request %d execute gas to %d", task.ID(), task.Msg.ExecuteGas)
+		msg, ok := task.Msg.(*oracletypes.MsgRequestData)
+		if !ok {
+			return task, errors.New("message type is not MsgRequestData")
+		}
+		msg.ExecuteGas = uint64(float64(msg.ExecuteGas) * m.gasMultiplier)
+		task.Msg = msg
+		m.logger.Info("bump execute gas", "bumping request %d execute gas to %d", task.ID(), msg.ExecuteGas)
 	}
 
 	return task, err

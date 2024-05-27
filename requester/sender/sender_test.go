@@ -65,7 +65,7 @@ func TestSenderWithSuccess(t *testing.T) {
 	mockClient.EXPECT().GetTx("abc").Return(&mockResult, nil).Times(1)
 
 	mockLogger := mocklogging.NewLogger()
-	mockTask := sender.NewTask(1, types.MsgRequestData{})
+	mockTask := sender.NewTask(1, &types.MsgRequestData{})
 
 	// Create channels
 	requestQueueCh := make(chan sender.Task, 1)
@@ -120,7 +120,7 @@ func TestSenderWithFailure(t *testing.T) {
 	mockClient.EXPECT().SendRequest(gomock.Any(), 1.0, gomock.Any()).Return(&mockResult, nil).Times(1)
 
 	mockLogger := mocklogging.NewLogger()
-	mockTask := sender.NewTask(1, types.MsgRequestData{})
+	mockTask := sender.NewTask(1, &types.MsgRequestData{})
 
 	// Create channels
 	requestQueueCh := make(chan sender.Task, 1)
@@ -160,7 +160,7 @@ func TestSenderWithClientError(t *testing.T) {
 	mockClient.EXPECT().SendRequest(gomock.Any(), 1.0, gomock.Any()).Return(nil, fmt.Errorf("error")).Times(1)
 
 	mockLogger := mocklogging.NewLogger()
-	mockTask := sender.NewTask(1, types.MsgRequestData{})
+	mockTask := sender.NewTask(1, &types.MsgRequestData{})
 
 	// Create channels
 	requestQueueCh := make(chan sender.Task, 1)
