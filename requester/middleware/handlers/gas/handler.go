@@ -21,6 +21,7 @@ type InsufficientPrepareGasHandler struct {
 	logger        logging.Logger
 }
 
+// NewInsufficientPrepareGasHandler creates a new handler for InsufficientPrepareGas events, specifically for the oracletypes.MsgRequestData message type.
 func NewInsufficientPrepareGasHandler(gasMultiplier float64, logger logging.Logger) *InsufficientPrepareGasHandler {
 	return &InsufficientPrepareGasHandler{gasMultiplier: gasMultiplier, logger: logger}
 }
@@ -49,6 +50,7 @@ type InsufficientExecuteGasHandler struct {
 	logger        logging.Logger
 }
 
+// NewInsufficientExecuteGasHandler creates a new handler for InsufficientExecuteGas events, specifically for the oracletypes.MsgRequestData message type.
 func NewInsufficientExecuteGasHandler(gasMultiplier float64, logger logging.Logger) *InsufficientExecuteGasHandler {
 	return &InsufficientExecuteGasHandler{gasMultiplier: gasMultiplier, logger: logger}
 }
