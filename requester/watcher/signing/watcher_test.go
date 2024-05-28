@@ -81,7 +81,7 @@ func TestWatcherSuccess(t *testing.T) {
 			}
 			content := feedstypes.NewFeedSignatureOrder(
 				[]string{"crypto_price.ethusd", "crypto_price.usdtusd"},
-				feedstypes.FEEDS_TYPE_DEFAULT,
+				feedstypes.FEED_TYPE_DEFAULT,
 			)
 			msg.SetContent(content)
 
@@ -210,7 +210,7 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 			}
 			content := feedstypes.NewFeedSignatureOrder(
 				[]string{"crypto_price.ethusd", "crypto_price.usdtusd"},
-				feedstypes.FEEDS_TYPE_DEFAULT,
+				feedstypes.FEED_TYPE_DEFAULT,
 			)
 			msg.SetContent(content)
 
@@ -256,7 +256,7 @@ func TestWatcherWithTimeout(t *testing.T) {
 	}
 	content := feedstypes.NewFeedSignatureOrder(
 		[]string{"crypto_price.ethusd", "crypto_price.usdtusd"},
-		feedstypes.FEEDS_TYPE_DEFAULT,
+		feedstypes.FEED_TYPE_DEFAULT,
 	)
 	msg.SetContent(content)
 

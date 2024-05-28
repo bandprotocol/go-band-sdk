@@ -99,7 +99,7 @@ func getOracleMsgRequestData(reqConf RequestConfig, sender string) (oracletypes.
 func getFeedsMsgRequestSignature(
 	from sdk.AccAddress,
 	signalIDs []string,
-	feedType types.FeedsType,
+	feedType types.FeedType,
 ) (*bandtsstypes.MsgRequestSignature, error) {
 	content := types.NewFeedSignatureOrder(signalIDs, feedType)
 	return bandtsstypes.NewMsgRequestSignature(content, sdk.NewCoins(sdk.NewInt64Coin("uband", 100)), from)
@@ -289,7 +289,7 @@ func requestFeedsSignatureExample(
 	feedsSignatureMsg, err := getFeedsMsgRequestSignature(
 		addr,
 		[]string{"crypto_price.ethusd", "crypto_price.usdtusd"},
-		types.FEEDS_TYPE_DEFAULT,
+		types.FEED_TYPE_DEFAULT,
 	)
 	if err != nil {
 		return err
