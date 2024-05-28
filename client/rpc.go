@@ -282,13 +282,14 @@ func (c RPC) GetSignature(signingID uint64) (*SigningResult, error) {
 				)
 				failCh <- struct{}{}
 				return
-			}
-			if res.CurrentGroupSigningResult == nil {
+			} else if res.CurrentGroupSigningResult == nil {
 				c.logger.Warning(
 					"GetSignature",
 					"Failed to get signature from %s, signing ID: %d, no signing result from current group",
 					node.Remote(), signingID,
 				)
+				failCh <- struct{}{}
+				return
 			}
 
 			signingResult := SigningResult{
@@ -299,8 +300,6 @@ func (c RPC) GetSignature(signingID uint64) (*SigningResult, error) {
 		}(node)
 	}
 
-	// Return the first result that we found;
-	// If unable to get result from all nodes, return error.
 	for range c.nodes {
 		select {
 		case res := <-resultCh:

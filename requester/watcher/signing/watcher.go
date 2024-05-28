@@ -58,7 +58,11 @@ func (w *Watcher) Start() {
 
 func (w *Watcher) watch(task Task) {
 	if task.SigningID == 0 {
-		w.failedRequestsCh <- FailResponse{task, client.SigningResult{}, types.ErrUnknown.Wrapf("signing ID %d is invalid", task.SigningID)}
+		w.failedRequestsCh <- FailResponse{
+			task,
+			client.SigningResult{},
+			types.ErrUnknown.Wrapf("signing ID %d is invalid", task.SigningID),
+		}
 		return
 	}
 

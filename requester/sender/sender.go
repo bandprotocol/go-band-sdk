@@ -112,11 +112,14 @@ func (s *Sender) request(task Task, key keyring.Record) {
 	if err != nil {
 		s.logger.Error("Sender", "failed to broadcast task ID(%d) with error: %s", task.ID(), err.Error())
 		if strings.Contains(err.Error(), "out-of-gas while executing the wasm script: bad wasm execution") {
-			s.failedRequestsCh <- FailResponse{task, sdk.TxResponse{}, types.ErrOutOfPrepareGas.Wrapf(err.Error())}
-			return
+			s.failedRequestsCh <- FailResponse{
+				task, sdk.TxResponse{}, types.ErrOutOfPrepareGas.Wrapf(err.Error()),
+			}
+		} else {
+			s.failedRequestsCh <- FailResponse{
+				task, sdk.TxResponse{}, types.ErrBroadcastFailed.Wrapf(err.Error()),
+			}
 		}
-
-		s.failedRequestsCh <- FailResponse{task, sdk.TxResponse{}, types.ErrBroadcastFailed.Wrapf(err.Error())}
 		return
 	} else if resp != nil && resp.Code != 0 {
 		s.logger.Error("Sender", "failed to broadcast task ID(%d) with code %d", task.ID(), resp.Code)
