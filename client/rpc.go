@@ -433,29 +433,7 @@ func (c RPC) GetRequestProofByID(reqID uint64) ([]byte, error) {
 
 	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
-			height, err := getProofHeight(c.ctx.WithClient(node), reqID)
-			if err != nil {
-				c.logger.Warning("GetRequestProofByID", "can't get proof height from %s; %s", node.Remote(), err)
-				failCh <- struct{}{}
-				return
-			}
-
-			b, err := c.ctx.WithClient(node).Client.Block(context.Background(), nil)
-			if err != nil {
-				c.logger.Warning("GetRequestProofByID", "can't get latest block from %s; %s", node.Remote(), err)
-				failCh <- struct{}{}
-				return
-			} else if b.Block.Height <= height {
-				c.logger.Warning(
-					"GetRequestProofByID",
-					"latest block height is less than proof height from %s",
-					node.Remote(),
-				)
-				failCh <- struct{}{}
-				return
-			}
-
-			evmProofBytes, err := getRequestProof(c.ctx.WithClient(node), reqID, height)
+			evmProofBytes, err := getRequestProof(c.ctx.WithClient(node), reqID)
 			if err != nil {
 				c.logger.Warning("GetRequestProofByID", "can't get proof bytes from %s; %s", node.Remote(), err)
 				failCh <- struct{}{}
