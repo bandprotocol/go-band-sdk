@@ -4,7 +4,6 @@ import (
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/sender"
 	"github.com/bandprotocol/go-band-sdk/requester/watcher/request"
-	"github.com/bandprotocol/go-band-sdk/requester/watcher/signing"
 )
 
 func IntoRequestWatcherTaskHandler(ctx sender.SuccessResponse) (request.Task, error) {
@@ -17,10 +16,6 @@ func IntoRequestWatcherTaskHandler(ctx sender.SuccessResponse) (request.Task, er
 }
 
 func IntoSenderTaskHandler(ctx sender.FailResponse) (sender.Task, error) {
-	return ctx.Task, nil
-}
-
-func IntoSigningWatcherTaskHandler(ctx signing.FailResponse) (signing.Task, error) {
 	return ctx.Task, nil
 }
 
