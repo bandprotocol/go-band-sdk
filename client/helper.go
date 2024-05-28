@@ -21,6 +21,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	"github.com/pkg/errors"
 )
 
 func NewClientCtx(chainID string) client.Context {
@@ -132,26 +133,26 @@ func convertSigningResultToSigningInfo(res *tsstypes.SigningResult) SigningInfo 
 	}
 }
 
-func getRequestProof(clientCtx client.Context, reqID uint64, height int64) ([]byte, error) {
-	queryClient := proofservice.NewProofServer(clientCtx)
-	resp, err := queryClient.Proof(
-		context.Background(), &proofservice.QueryProofRequest{RequestId: reqID, Height: height},
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp.Result.EvmProofBytes, nil
-}
-
-func getProofHeight(clientCtx client.Context, reqID uint64) (int64, error) {
+func getRequestProof(clientCtx client.Context, reqID uint64) ([]byte, error) {
 	queryClient := proofservice.NewProofServer(clientCtx)
 	resp, err := queryClient.Proof(
 		context.Background(), &proofservice.QueryProofRequest{RequestId: reqID, Height: 0},
 	)
 	if err != nil {
-		return 0, err
+		return nil, errors.Wrapf(err, "failed to get proof")
 	}
 
-	return resp.Height, nil
+	b, err := clientCtx.Client.Block(context.Background(), nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get current block")
+	}
+	if resp.Height >= b.Block.Height {
+		return nil, fmt.Errorf(
+			"proof is not ready; current height: %d, proof height: %d",
+			b.Block.Height,
+			resp.Height,
+		)
+	}
+
+	return resp.Result.EvmProofBytes, nil
 }
