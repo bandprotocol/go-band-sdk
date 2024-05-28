@@ -5,7 +5,10 @@ import (
 	"testing"
 	"time"
 
+	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
+	feedstypes "github.com/bandprotocol/chain/v2/x/feeds/types"
 	tsstypes "github.com/bandprotocol/chain/v2/x/tss/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"go.uber.org/mock/gomock"
 
 	"github.com/bandprotocol/go-band-sdk/client"
@@ -72,7 +75,17 @@ func TestWatcherSuccess(t *testing.T) {
 			w := signing.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 			go w.Start()
 
-			task := signing.NewTask(1, 1)
+			msg := &bandtsstypes.MsgRequestSignature{
+				FeeLimit: sdk.NewCoins(sdk.NewCoin("uband", sdk.NewInt(1000000))),
+				Sender:   "",
+			}
+			content := feedstypes.NewFeedSignatureOrder(
+				[]string{"crypto_price.ethusd", "crypto_price.usdtusd"},
+				feedstypes.FEEDS_TYPE_DEFAULT,
+			)
+			msg.SetContent(content)
+
+			task := signing.NewTask(1, 1, msg)
 			timeout := time.After(5 * time.Second)
 
 			watcherCh <- task
@@ -191,7 +204,17 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 			w := signing.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 			go w.Start()
 
-			task := signing.NewTask(1, 1)
+			msg := &bandtsstypes.MsgRequestSignature{
+				FeeLimit: sdk.NewCoins(sdk.NewCoin("uband", sdk.NewInt(1000000))),
+				Sender:   "",
+			}
+			content := feedstypes.NewFeedSignatureOrder(
+				[]string{"crypto_price.ethusd", "crypto_price.usdtusd"},
+				feedstypes.FEEDS_TYPE_DEFAULT,
+			)
+			msg.SetContent(content)
+
+			task := signing.NewTask(1, 1, msg)
 			timeout := time.After(10 * time.Second)
 
 			watcherCh <- task
@@ -227,7 +250,17 @@ func TestWatcherWithTimeout(t *testing.T) {
 	w := signing.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 	go w.Start()
 
-	task := signing.NewTask(1, 1)
+	msg := &bandtsstypes.MsgRequestSignature{
+		FeeLimit: sdk.NewCoins(sdk.NewCoin("uband", sdk.NewInt(1000000))),
+		Sender:   "",
+	}
+	content := feedstypes.NewFeedSignatureOrder(
+		[]string{"crypto_price.ethusd", "crypto_price.usdtusd"},
+		feedstypes.FEEDS_TYPE_DEFAULT,
+	)
+	msg.SetContent(content)
+
+	task := signing.NewTask(1, 1, msg)
 	timeout := time.After(10 * time.Second)
 
 	watcherCh <- task

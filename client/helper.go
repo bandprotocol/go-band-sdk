@@ -56,7 +56,7 @@ func createTxFactory(chainID, gasPrice string, keyring keyring.Keyring) tx.Facto
 	return tx.Factory{}.
 		WithChainID(chainID).
 		WithTxConfig(band.MakeEncodingConfig().TxConfig).
-		WithGasAdjustment(1.1).
+		WithGasAdjustment(1.2).
 		WithGasPrices(gasPrice).
 		WithKeybase(keyring).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT)
@@ -97,6 +97,20 @@ func GetRequestID(events []sdk.StringEvent) (uint64, error) {
 		}
 	}
 	return 0, fmt.Errorf("cannot find request id")
+}
+
+func GetSigningID(events []sdk.StringEvent) (uint64, error) {
+	for _, event := range events {
+		if event.Type == bandtsstypes.EventTypeSigningRequestCreated {
+			sid, err := strconv.ParseUint(event.Attributes[0].Value, 10, 64)
+			if err != nil {
+				return 0, err
+			}
+
+			return sid, nil
+		}
+	}
+	return 0, fmt.Errorf("cannot find signing id")
 }
 
 func convertSigningResultToSigningInfo(res *tsstypes.SigningResult) SigningInfo {

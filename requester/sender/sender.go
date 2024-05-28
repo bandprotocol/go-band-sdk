@@ -1,14 +1,13 @@
 package sender
 
 import (
-	"encoding/json"
 	"strings"
 	"time"
 
+	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
-	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
 	"github.com/bandprotocol/go-band-sdk/utils/logging"
@@ -74,10 +73,8 @@ func (s *Sender) Start() {
 	for {
 		req := <-s.requestQueueCh
 		key := <-s.freeKeys
-		// Assume all tasks can be marshalled
-		b, _ := json.Marshal(req.Msg)
 
-		s.logger.Info("Sender", "sending request with ID(%d) with payload: %s", req.ID(), string(b))
+		s.logger.Info("Sender", "sending request with ID(%d) with payload: %s", req.ID(), req.Msg.String())
 
 		go s.request(req, key)
 	}

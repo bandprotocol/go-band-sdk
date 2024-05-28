@@ -1,6 +1,8 @@
 package signing
 
 import (
+	sdk "github.com/cosmos/cosmos-sdk/types"
+
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
 )
@@ -14,12 +16,14 @@ var (
 type Task struct {
 	id        uint64
 	SigningID uint64
+	Msg       sdk.Msg
 }
 
-func NewTask(id, signingID uint64) Task {
+func NewTask(id, signingID uint64, msg sdk.Msg) Task {
 	return Task{
 		id:        id,
 		SigningID: signingID,
+		Msg:       msg,
 	}
 }
 
