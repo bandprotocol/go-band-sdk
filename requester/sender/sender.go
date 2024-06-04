@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -92,10 +93,17 @@ func (s *Sender) request(task Task, key keyring.Record) {
 		return
 	}
 
-	// Change the sender with the actual sender if the message is Oracle MsgRequestData
-	if msg, ok := task.Msg.(*oracletypes.MsgRequestData); ok {
+	// Mutate the msg's sender to the actual sender
+	switch msg := task.Msg.(type) {
+	case *oracletypes.MsgRequestData:
 		msg.Sender = addr.String()
 		task.Msg = msg
+	case *bandtsstypes.MsgRequestSignature:
+		msg.Sender = addr.String()
+		task.Msg = msg
+	default:
+		s.logger.Error("Sender", "unsupported message type: %T", task.Msg)
+		return
 	}
 
 	// Attempt to send the request

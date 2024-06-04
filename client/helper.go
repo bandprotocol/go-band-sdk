@@ -124,6 +124,7 @@ func convertSigningResultToSigningInfo(res *tsstypes.SigningResult) SigningInfo 
 	}
 
 	return SigningInfo{
+		Message:      res.Signing.Message,
 		PubKey:       res.Signing.GroupPubKey,
 		PubNonce:     res.Signing.GroupPubNonce,
 		Status:       res.Signing.Status,
