@@ -107,7 +107,14 @@ func (s *Subscriber) listenEvents(
 			}
 
 			s.logger.Debug("New event", "uid: %s", uid)
-			s.cache.Add(key, struct{}{}, cache.DefaultExpiration)
+
+			// Add the event to the cache, it should never return error due to a new item
+			// but we log it just in case.
+			if err := s.cache.Add(key, struct{}{}, cache.DefaultExpiration); err != nil {
+				s.logger.Error("Failed to add event to cache", "error", err)
+				continue
+			}
+
 			out <- msg
 		case <-stopCh:
 			break
