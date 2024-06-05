@@ -178,3 +178,32 @@ func (mr *MockClientMockRecorder) SendRequest(msg, gasPrice, key any) *gomock.Ca
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendRequest", reflect.TypeOf((*MockClient)(nil).SendRequest), msg, gasPrice, key)
 }
+
+// Subscribe mocks base method.
+func (m *MockClient) Subscribe(name, query string) (*client.SubscriptionInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Subscribe", name, query)
+	ret0, _ := ret[0].(*client.SubscriptionInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Subscribe indicates an expected call of Subscribe.
+func (mr *MockClientMockRecorder) Subscribe(name, query any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscribe", reflect.TypeOf((*MockClient)(nil).Subscribe), name, query)
+}
+
+// Unsubscribe mocks base method.
+func (m *MockClient) Unsubscribe(name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Unsubscribe", name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Unsubscribe indicates an expected call of Unsubscribe.
+func (mr *MockClientMockRecorder) Unsubscribe(name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unsubscribe", reflect.TypeOf((*MockClient)(nil).Unsubscribe), name)
+}

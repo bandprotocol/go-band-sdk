@@ -1,15 +1,12 @@
-module github.com/bandprotocol/go-band-sdk/client
+module github.com/bandprotocol/go-band-sdk/subscriber
 
 go 1.22.3
 
 require (
-	github.com/bandprotocol/chain/v2 v2.5.5-0.20240503145406-b6ed5a969335
+	github.com/bandprotocol/go-band-sdk/client v0.0.0-00010101000000-000000000000
 	github.com/bandprotocol/go-band-sdk/utils v1.0.1
 	github.com/cometbft/cometbft v0.37.5
-	github.com/cosmos/cosmos-sdk v0.47.11
-	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.9.0
-	go.uber.org/mock v0.4.0
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 )
 
 require (
@@ -32,6 +29,7 @@ require (
 	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/aws/aws-sdk-go v1.44.203 // indirect
+	github.com/bandprotocol/chain/v2 v2.5.5-0.20240503145406-b6ed5a969335 // indirect
 	github.com/bandprotocol/go-owasm v0.3.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
@@ -52,6 +50,7 @@ require (
 	github.com/confio/ics23/go v0.9.0 // indirect
 	github.com/cosmos/btcutil v1.0.5 // indirect
 	github.com/cosmos/cosmos-proto v1.0.0-beta.5 // indirect
+	github.com/cosmos/cosmos-sdk v0.47.11 // indirect
 	github.com/cosmos/go-bip39 v1.0.0 // indirect
 	github.com/cosmos/gogogateway v1.2.0 // indirect
 	github.com/cosmos/gogoproto v1.4.10 // indirect
@@ -138,6 +137,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
 	github.com/petermattis/goid v0.0.0-20230904192822-1876fd5063bc // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.17.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
@@ -158,6 +158,7 @@ require (
 	github.com/spf13/cobra v1.8.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.18.2 // indirect
+	github.com/stretchr/testify v1.9.0 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20220721030215-126854af5e6d // indirect
 	github.com/tendermint/go-amino v0.16.0 // indirect
@@ -201,8 +202,10 @@ replace (
 	// TODO: for testing on local only; remove before merging
 	github.com/bandprotocol/chain/v2 => ../../private-chain
 
+	github.com/bandprotocol/go-band-sdk/client => ../client
 	github.com/bandprotocol/go-band-sdk/utils => ../utils
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
+
 	// cosmos-sdk v0.47.11 is incompatible with gogoproto 1.4.10
 	// https://github.com/cosmos/cosmos-sdk/issues/20159
 	golang.org/x/exp => golang.org/x/exp v0.0.0-20230711153332-06a737ee72cb
