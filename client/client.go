@@ -17,4 +17,6 @@ type Client interface {
 	GetBalance(account sdk.AccAddress) (uint64, error)
 	SendRequest(msg sdk.Msg, gasPrice float64, key keyring.Record) (*sdk.TxResponse, error)
 	GetRequestProofByID(reqID uint64) ([]byte, error)
+	Subscribe(name, query string) (*SubscriptionInfo, error)
+	Unsubscribe(name string) error
 }
