@@ -302,6 +302,7 @@ func requestFeedsSignatureExample(
 		return err
 	}
 	l.Info("example", "Feeds signature result: %+v", signatureResult)
+	l.Info("example", "Feeds signature msg: %s", hex.EncodeToString(signatureResult.CurrentGroup.Message))
 
 	return nil
 }
