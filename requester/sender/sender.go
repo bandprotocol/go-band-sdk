@@ -75,7 +75,7 @@ func (s *Sender) Start() {
 		req := <-s.requestQueueCh
 		key := <-s.freeKeys
 
-		s.logger.Info("Sender", "sending request with ID(%d) with payload: %s", req.ID(), req.Msg.String())
+		s.logger.Debug("Sender", "sending request with ID(%d) with payload: %s", req.ID(), req.Msg.String())
 
 		go s.request(req, key)
 	}
@@ -132,7 +132,7 @@ func (s *Sender) request(task Task, key keyring.Record) {
 	}
 
 	txHash := resp.TxHash
-	s.logger.Info("Sender", "successfully broadcasted task ID(%d) with tx_hash: %s", task.ID(), txHash)
+	s.logger.Debug("Sender", "successfully broadcasted task ID(%d) with tx_hash: %s", task.ID(), txHash)
 
 	// Poll for tx confirmation
 	et := time.Now().Add(s.timeout)
@@ -149,7 +149,7 @@ func (s *Sender) request(task Task, key keyring.Record) {
 			return
 		}
 
-		s.logger.Info("Sender", "task ID(%d) has been confirmed", task.ID())
+		s.logger.Debug("Sender", "task ID(%d) has been confirmed", task.ID())
 		s.successfulRequestsCh <- SuccessResponse{task, *resp}
 		return
 	}

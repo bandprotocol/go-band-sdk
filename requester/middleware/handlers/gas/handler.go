@@ -40,7 +40,7 @@ func (m *InsufficientPrepareGasHandler) Handle(
 
 		msg.PrepareGas = uint64(float64(msg.PrepareGas) * m.gasMultiplier)
 		req.Msg = msg
-		m.logger.Info("bump prepare gas", "bumping request %d prepare gas to %d", req.ID(), msg.PrepareGas)
+		m.logger.Debug("bump prepare gas", "bumping request %d prepare gas to %d", req.ID(), msg.PrepareGas)
 	}
 	return req, err
 }
@@ -68,7 +68,7 @@ func (m *InsufficientExecuteGasHandler) Handle(
 		}
 		msg.ExecuteGas = uint64(float64(msg.ExecuteGas) * m.gasMultiplier)
 		task.Msg = msg
-		m.logger.Info("bump execute gas", "bumping request %d execute gas to %d", task.ID(), msg.ExecuteGas)
+		m.logger.Debug("bump execute gas", "bumping request %d execute gas to %d", task.ID(), msg.ExecuteGas)
 	}
 
 	return task, err

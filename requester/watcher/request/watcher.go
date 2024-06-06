@@ -73,24 +73,24 @@ func (w *Watcher) watch(task Task) {
 		case oracletypes.RESOLVE_STATUS_SUCCESS:
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
-			w.logger.Info("Watcher", "task ID(%d) has been resolved with result: %s", task.ID(), string(b))
+			w.logger.Debug("Request watcher", "task ID(%d) has been resolved with result: %s", task.ID(), string(b))
 			w.successfulRequestsCh <- SuccessResponse{task, *res}
 			return
 		case oracletypes.RESOLVE_STATUS_FAILURE:
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
-			w.logger.Error("Watcher", "task ID(%d) has failed with result: %s", task.ID(), string(b))
+			w.logger.Error("Request watcher", "task ID(%d) has failed with result: %s", task.ID(), string(b))
 			var wrappedErr types.Error
 
 			reason, err := w.client.QueryRequestFailureReason(task.RequestID)
 			if err != nil {
 				w.logger.Error(
-					"Watcher", "task ID(%d) failed. Can't get reason: %s", task.ID(), err,
+					"Request watcher", "task ID(%d) failed. Can't get reason: %s", task.ID(), err,
 				)
 			}
 
 			w.logger.Error(
-				"Watcher", "task ID(%d) failed. with reason: %s", task.ID(), reason,
+				"Request watcher", "task ID(%d) failed. with reason: %s", task.ID(), reason,
 			)
 			if reason == "out-of-gas while executing the wasm script" {
 				wrappedErr = types.ErrOutOfExecuteGas.Wrapf(
@@ -107,7 +107,7 @@ func (w *Watcher) watch(task Task) {
 		case oracletypes.RESOLVE_STATUS_EXPIRED:
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
-			w.logger.Error("Watcher", "task ID(%d) has failed with expired result: %s", task.ID(), string(b))
+			w.logger.Error("Request watcher", "task ID(%d) has failed with expired result: %s", task.ID(), string(b))
 			wrappedErr := types.ErrRequestExpired.Wrapf(
 				"request ID %d expired", task.RequestID,
 			)
