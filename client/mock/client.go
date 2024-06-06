@@ -12,12 +12,11 @@ package mock
 import (
 	reflect "reflect"
 
-	types "github.com/bandprotocol/chain/v2/x/oracle/types"
 	client "github.com/bandprotocol/go-band-sdk/client"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
 	client0 "github.com/cosmos/cosmos-sdk/client"
 	keyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
-	types0 "github.com/cosmos/cosmos-sdk/types"
+	types "github.com/cosmos/cosmos-sdk/types"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -45,7 +44,7 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // GetAccount mocks base method.
-func (m *MockClient) GetAccount(account types0.AccAddress) (client0.Account, error) {
+func (m *MockClient) GetAccount(account types.AccAddress) (client0.Account, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAccount", account)
 	ret0, _ := ret[0].(client0.Account)
@@ -60,7 +59,7 @@ func (mr *MockClientMockRecorder) GetAccount(account any) *gomock.Call {
 }
 
 // GetBalance mocks base method.
-func (m *MockClient) GetBalance(account types0.AccAddress) (uint64, error) {
+func (m *MockClient) GetBalance(account types.AccAddress) (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBalance", account)
 	ret0, _ := ret[0].(uint64)
@@ -135,10 +134,10 @@ func (mr *MockClientMockRecorder) GetSignature(id any) *gomock.Call {
 }
 
 // GetTx mocks base method.
-func (m *MockClient) GetTx(txHash string) (*types0.TxResponse, error) {
+func (m *MockClient) GetTx(txHash string) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTx", txHash)
-	ret0, _ := ret[0].(*types0.TxResponse)
+	ret0, _ := ret[0].(*types.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -165,10 +164,10 @@ func (mr *MockClientMockRecorder) QueryRequestFailureReason(id any) *gomock.Call
 }
 
 // SendRequest mocks base method.
-func (m *MockClient) SendRequest(msg *types.MsgRequestData, gasPrice float64, key keyring.Record) (*types0.TxResponse, error) {
+func (m *MockClient) SendRequest(msg types.Msg, gasPrice float64, key keyring.Record) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendRequest", msg, gasPrice, key)
-	ret0, _ := ret[0].(*types0.TxResponse)
+	ret0, _ := ret[0].(*types.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

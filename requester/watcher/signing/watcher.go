@@ -88,13 +88,13 @@ func (w *Watcher) watch(task Task) {
 		case done:
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
-			w.logger.Info("Watcher", "task ID(%d) has been resolved with result: %s", task.ID(), string(b))
+			w.logger.Debug("Signing watcher", "task ID(%d) has been resolved with result: %s", task.ID(), string(b))
 			w.successfulRequestsCh <- SuccessResponse{task, *res}
 			return
 		default:
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
-			w.logger.Info("Watcher", "task ID(%d) has failed with result: %s", task.ID(), string(b))
+			w.logger.Error("Signing watcher", "task ID(%d) has failed with result: %s", task.ID(), string(b))
 			wrappedErr := types.ErrUnknown.Wrapf("signign ID %d failed with unknown reason: %s", task.SigningID, err)
 			w.failedRequestsCh <- FailResponse{task, *res, wrappedErr}
 			return

@@ -1,10 +1,11 @@
 package sender
 
 import (
-	"encoding/json"
 	"strings"
 	"time"
 
+	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
+	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -73,10 +74,8 @@ func (s *Sender) Start() {
 	for {
 		req := <-s.requestQueueCh
 		key := <-s.freeKeys
-		// Assume all tasks can be marshalled
-		b, _ := json.Marshal(req.Msg)
 
-		s.logger.Info("Sender", "sending request with ID(%d) with payload: %s", req.ID(), string(b))
+		s.logger.Debug("Sender", "sending request with ID(%d) with payload: %s", req.ID(), req.Msg.String())
 
 		go s.request(req, key)
 	}
@@ -93,10 +92,22 @@ func (s *Sender) request(task Task, key keyring.Record) {
 		s.logger.Error("Sender", "failed to get address from key: %s", err.Error())
 		return
 	}
-	task.Msg.Sender = addr.String()
+
+	// Mutate the msg's sender to the actual sender
+	switch msg := task.Msg.(type) {
+	case *oracletypes.MsgRequestData:
+		msg.Sender = addr.String()
+		task.Msg = msg
+	case *bandtsstypes.MsgRequestSignature:
+		msg.Sender = addr.String()
+		task.Msg = msg
+	default:
+		s.logger.Error("Sender", "unsupported message type: %T", task.Msg)
+		return
+	}
 
 	// Attempt to send the request
-	resp, err := s.client.SendRequest(&task.Msg, s.gasPrice, key)
+	resp, err := s.client.SendRequest(task.Msg, s.gasPrice, key)
 	// Handle error
 	if err != nil {
 		s.logger.Error("Sender", "failed to broadcast task ID(%d) with error: %s", task.ID(), err.Error())
@@ -121,7 +132,7 @@ func (s *Sender) request(task Task, key keyring.Record) {
 	}
 
 	txHash := resp.TxHash
-	s.logger.Info("Sender", "successfully broadcasted task ID(%d) with tx_hash: %s", task.ID(), txHash)
+	s.logger.Debug("Sender", "successfully broadcasted task ID(%d) with tx_hash: %s", task.ID(), txHash)
 
 	// Poll for tx confirmation
 	et := time.Now().Add(s.timeout)
@@ -138,7 +149,7 @@ func (s *Sender) request(task Task, key keyring.Record) {
 			return
 		}
 
-		s.logger.Info("Sender", "task ID(%d) has been confirmed", task.ID())
+		s.logger.Debug("Sender", "task ID(%d) has been confirmed", task.ID())
 		s.successfulRequestsCh <- SuccessResponse{task, *resp}
 		return
 	}

@@ -1,7 +1,6 @@
 package client
 
 import (
-	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -16,7 +15,7 @@ type Client interface {
 	GetBlockResult(height int64) (*ctypes.ResultBlockResults, error)
 	QueryRequestFailureReason(id uint64) (string, error)
 	GetBalance(account sdk.AccAddress) (uint64, error)
-	SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key keyring.Record) (*sdk.TxResponse, error)
+	SendRequest(msg sdk.Msg, gasPrice float64, key keyring.Record) (*sdk.TxResponse, error)
 	GetRequestProofByID(reqID uint64) ([]byte, error)
 	Subscribe(name, query string) (*SubscriptionInfo, error)
 	Unsubscribe(name string) error

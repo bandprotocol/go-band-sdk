@@ -327,7 +327,7 @@ func (c RPC) GetBalance(_ sdk.AccAddress) (uint64, error) {
 	return 0, nil
 }
 
-func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key keyring.Record) (*sdk.TxResponse, error) {
+func (c RPC) SendRequest(msg sdk.Msg, gasPrice float64, key keyring.Record) (*sdk.TxResponse, error) {
 	// Get account to get nonce of sender first
 	addr, err := key.GetAddress()
 	if err != nil {

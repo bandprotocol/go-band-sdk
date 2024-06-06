@@ -27,6 +27,7 @@ func (s SigningResult) IsReady() bool {
 
 // SigningInfo contains signing information.
 type SigningInfo struct {
+	Message      []byte
 	EVMSignature tsstypes.EVMSignature
 	Status       tsstypes.SigningStatus
 	PubKey       []byte

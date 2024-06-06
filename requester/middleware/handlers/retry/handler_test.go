@@ -22,7 +22,7 @@ func TestCounterHandler(t *testing.T) {
 	factory := setupFactory(3)
 	handler := retry.NewCounterHandler[types.Task, types.Task](factory)
 
-	mockTask := sender.NewTask(uint64(1), oracletypes.MsgRequestData{})
+	mockTask := sender.NewTask(uint64(1), &oracletypes.MsgRequestData{})
 
 	_, err := handler.Handle(
 		mockTask, func(ctx types.Task) (types.Task, error) {
@@ -37,7 +37,7 @@ func TestCounterHandlerWithMaxRetry(t *testing.T) {
 	factory := setupFactory(1)
 	handler := retry.NewCounterHandler[types.Task, types.Task](factory)
 
-	mockTask := sender.NewTask(uint64(1), oracletypes.MsgRequestData{})
+	mockTask := sender.NewTask(uint64(1), &oracletypes.MsgRequestData{})
 
 	parser := func(ctx types.Task) (types.Task, error) {
 		return ctx, nil
@@ -55,7 +55,7 @@ func TestResolverHandler(t *testing.T) {
 	counter := retry.NewCounterHandler[types.Task, types.Task](factory)
 	resolver := retry.NewResolverHandler[types.Task, types.Task](factory)
 
-	mockTask := sender.NewTask(uint64(1), oracletypes.MsgRequestData{})
+	mockTask := sender.NewTask(uint64(1), &oracletypes.MsgRequestData{})
 
 	parser := func(ctx types.Task) (types.Task, error) {
 		return ctx, nil

@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	band "github.com/bandprotocol/chain/v2/app"
@@ -57,7 +56,7 @@ func createTxFactory(chainID, gasPrice string, keyring keyring.Keyring) tx.Facto
 	return tx.Factory{}.
 		WithChainID(chainID).
 		WithTxConfig(band.MakeEncodingConfig().TxConfig).
-		WithGasAdjustment(1.1).
+		WithGasAdjustment(1.2).
 		WithGasPrices(gasPrice).
 		WithKeybase(keyring).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT)
@@ -86,20 +85,6 @@ func estimateGas(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (uin
 	return gas, err
 }
 
-func GetRequestID(events []sdk.StringEvent) (uint64, error) {
-	for _, event := range events {
-		if event.Type == oracletypes.EventTypeRequest {
-			rid, err := strconv.ParseUint(event.Attributes[0].Value, 10, 64)
-			if err != nil {
-				return 0, err
-			}
-
-			return rid, nil
-		}
-	}
-	return 0, fmt.Errorf("cannot find request id")
-}
-
 func convertSigningResultToSigningInfo(res *tsstypes.SigningResult) SigningInfo {
 	if res == nil {
 		return SigningInfo{}
@@ -111,6 +96,7 @@ func convertSigningResultToSigningInfo(res *tsstypes.SigningResult) SigningInfo 
 	}
 
 	return SigningInfo{
+		Message:      res.Signing.Message,
 		PubKey:       res.Signing.GroupPubKey,
 		PubNonce:     res.Signing.GroupPubNonce,
 		Status:       res.Signing.Status,
