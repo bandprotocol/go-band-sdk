@@ -93,7 +93,11 @@ func main() {
 			l.Info("main", "Received transfer event:")
 			parseEvent(event.Data.(types.EventDataTx))
 		case <-time.Tick(5 * time.Minute):
-			sub.Unsubscribe("transfer")
+			if err := sub.Unsubscribe("transfer"); err != nil {
+				l.Info("main", "Failed to unsubscribe from events")
+				return
+			}
+
 			l.Info("main", "Finished listening to events")
 			return
 		}

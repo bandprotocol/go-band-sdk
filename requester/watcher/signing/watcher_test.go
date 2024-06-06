@@ -9,6 +9,7 @@ import (
 	feedstypes "github.com/bandprotocol/chain/v2/x/feeds/types"
 	tsstypes "github.com/bandprotocol/chain/v2/x/tss/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 
 	"github.com/bandprotocol/go-band-sdk/client"
@@ -83,7 +84,8 @@ func TestWatcherSuccess(t *testing.T) {
 				[]string{"crypto_price.ethusd", "crypto_price.usdtusd"},
 				feedstypes.FEED_TYPE_DEFAULT,
 			)
-			msg.SetContent(content)
+			err := msg.SetContent(content)
+			require.NoError(t, err)
 
 			task := signing.NewTask(1, 1, msg)
 			timeout := time.After(5 * time.Second)
@@ -212,7 +214,8 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 				[]string{"crypto_price.ethusd", "crypto_price.usdtusd"},
 				feedstypes.FEED_TYPE_DEFAULT,
 			)
-			msg.SetContent(content)
+			err := msg.SetContent(content)
+			require.NoError(t, err)
 
 			task := signing.NewTask(1, 1, msg)
 			timeout := time.After(10 * time.Second)
@@ -258,7 +261,8 @@ func TestWatcherWithTimeout(t *testing.T) {
 		[]string{"crypto_price.ethusd", "crypto_price.usdtusd"},
 		feedstypes.FEED_TYPE_DEFAULT,
 	)
-	msg.SetContent(content)
+	err := msg.SetContent(content)
+	require.NoError(t, err)
 
 	task := signing.NewTask(1, 1, msg)
 	timeout := time.After(10 * time.Second)

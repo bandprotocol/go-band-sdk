@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	band "github.com/bandprotocol/chain/v2/app"
@@ -84,34 +83,6 @@ func getSigning(clientCtx client.Context, signingID uint64) (*bandtsstypes.Query
 func estimateGas(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (uint64, error) {
 	_, gas, err := tx.CalculateGas(clientCtx, txf, msgs...)
 	return gas, err
-}
-
-func GetRequestID(events []sdk.StringEvent) (uint64, error) {
-	for _, event := range events {
-		if event.Type == oracletypes.EventTypeRequest {
-			rid, err := strconv.ParseUint(event.Attributes[0].Value, 10, 64)
-			if err != nil {
-				return 0, err
-			}
-
-			return rid, nil
-		}
-	}
-	return 0, fmt.Errorf("cannot find request id")
-}
-
-func GetSigningID(events []sdk.StringEvent) (uint64, error) {
-	for _, event := range events {
-		if event.Type == bandtsstypes.EventTypeSigningRequestCreated {
-			sid, err := strconv.ParseUint(event.Attributes[0].Value, 10, 64)
-			if err != nil {
-				return 0, err
-			}
-
-			return sid, nil
-		}
-	}
-	return 0, fmt.Errorf("cannot find signing id")
 }
 
 func convertSigningResultToSigningInfo(res *tsstypes.SigningResult) SigningInfo {
