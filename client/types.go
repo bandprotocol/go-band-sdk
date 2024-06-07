@@ -1,6 +1,7 @@
 package client
 
 import (
+	"github.com/bandprotocol/chain/v2/pkg/tss"
 	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	tsstypes "github.com/bandprotocol/chain/v2/x/tss/types"
@@ -27,6 +28,7 @@ func (s SigningResult) IsReady() bool {
 
 // SigningInfo contains signing information.
 type SigningInfo struct {
+	SigningID    tss.SigningID
 	Message      []byte
 	EVMSignature tsstypes.EVMSignature
 	Status       tsstypes.SigningStatus

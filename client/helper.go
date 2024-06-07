@@ -96,6 +96,7 @@ func convertSigningResultToSigningInfo(res *tsstypes.SigningResult) SigningInfo 
 	}
 
 	return SigningInfo{
+		SigningID:    res.Signing.ID,
 		Message:      res.Signing.Message,
 		PubKey:       res.Signing.GroupPubKey,
 		PubNonce:     res.Signing.GroupPubNonce,
