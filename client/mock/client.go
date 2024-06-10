@@ -12,11 +12,11 @@ package mock
 import (
 	reflect "reflect"
 
-	types "github.com/bandprotocol/chain/v2/x/oracle/types"
+	client "github.com/bandprotocol/go-band-sdk/client"
 	coretypes "github.com/cometbft/cometbft/rpc/core/types"
-	client "github.com/cosmos/cosmos-sdk/client"
+	client0 "github.com/cosmos/cosmos-sdk/client"
 	keyring "github.com/cosmos/cosmos-sdk/crypto/keyring"
-	types0 "github.com/cosmos/cosmos-sdk/types"
+	types "github.com/cosmos/cosmos-sdk/types"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -44,10 +44,10 @@ func (m *MockClient) EXPECT() *MockClientMockRecorder {
 }
 
 // GetAccount mocks base method.
-func (m *MockClient) GetAccount(account types0.AccAddress) (client.Account, error) {
+func (m *MockClient) GetAccount(account types.AccAddress) (client0.Account, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAccount", account)
-	ret0, _ := ret[0].(client.Account)
+	ret0, _ := ret[0].(client0.Account)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -59,7 +59,7 @@ func (mr *MockClientMockRecorder) GetAccount(account any) *gomock.Call {
 }
 
 // GetBalance mocks base method.
-func (m *MockClient) GetBalance(account types0.AccAddress) (uint64, error) {
+func (m *MockClient) GetBalance(account types.AccAddress) (uint64, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetBalance", account)
 	ret0, _ := ret[0].(uint64)
@@ -88,11 +88,26 @@ func (mr *MockClientMockRecorder) GetBlockResult(height any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBlockResult", reflect.TypeOf((*MockClient)(nil).GetBlockResult), height)
 }
 
+// GetRequestProofByID mocks base method.
+func (m *MockClient) GetRequestProofByID(reqID uint64) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetRequestProofByID", reqID)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetRequestProofByID indicates an expected call of GetRequestProofByID.
+func (mr *MockClientMockRecorder) GetRequestProofByID(reqID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetRequestProofByID", reflect.TypeOf((*MockClient)(nil).GetRequestProofByID), reqID)
+}
+
 // GetResult mocks base method.
-func (m *MockClient) GetResult(id uint64) (*types.Result, error) {
+func (m *MockClient) GetResult(id uint64) (*client.OracleResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetResult", id)
-	ret0, _ := ret[0].(*types.Result)
+	ret0, _ := ret[0].(*client.OracleResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -104,10 +119,10 @@ func (mr *MockClientMockRecorder) GetResult(id any) *gomock.Call {
 }
 
 // GetSignature mocks base method.
-func (m *MockClient) GetSignature(id uint64) ([]byte, error) {
+func (m *MockClient) GetSignature(id uint64) (*client.SigningResult, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetSignature", id)
-	ret0, _ := ret[0].([]byte)
+	ret0, _ := ret[0].(*client.SigningResult)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -119,10 +134,10 @@ func (mr *MockClientMockRecorder) GetSignature(id any) *gomock.Call {
 }
 
 // GetTx mocks base method.
-func (m *MockClient) GetTx(txHash string) (*types0.TxResponse, error) {
+func (m *MockClient) GetTx(txHash string) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTx", txHash)
-	ret0, _ := ret[0].(*types0.TxResponse)
+	ret0, _ := ret[0].(*types.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -149,10 +164,10 @@ func (mr *MockClientMockRecorder) QueryRequestFailureReason(id any) *gomock.Call
 }
 
 // SendRequest mocks base method.
-func (m *MockClient) SendRequest(msg *types.MsgRequestData, gasPrice float64, key keyring.Record) (*types0.TxResponse, error) {
+func (m *MockClient) SendRequest(msg types.Msg, gasPrice float64, key keyring.Record) (*types.TxResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SendRequest", msg, gasPrice, key)
-	ret0, _ := ret[0].(*types0.TxResponse)
+	ret0, _ := ret[0].(*types.TxResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -161,4 +176,33 @@ func (m *MockClient) SendRequest(msg *types.MsgRequestData, gasPrice float64, ke
 func (mr *MockClientMockRecorder) SendRequest(msg, gasPrice, key any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendRequest", reflect.TypeOf((*MockClient)(nil).SendRequest), msg, gasPrice, key)
+}
+
+// Subscribe mocks base method.
+func (m *MockClient) Subscribe(name, query string) (*client.SubscriptionInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Subscribe", name, query)
+	ret0, _ := ret[0].(*client.SubscriptionInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Subscribe indicates an expected call of Subscribe.
+func (mr *MockClientMockRecorder) Subscribe(name, query any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Subscribe", reflect.TypeOf((*MockClient)(nil).Subscribe), name, query)
+}
+
+// Unsubscribe mocks base method.
+func (m *MockClient) Unsubscribe(name string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Unsubscribe", name)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Unsubscribe indicates an expected call of Unsubscribe.
+func (mr *MockClientMockRecorder) Unsubscribe(name any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Unsubscribe", reflect.TypeOf((*MockClient)(nil).Unsubscribe), name)
 }

@@ -37,7 +37,7 @@ func SetupSender(cl client.Client, l logging.Logger, reqCh chan sender.Task) (*s
 		return nil, err
 	}
 
-	return sender.NewSender(cl, l, kr, 1.0, 5*time.Second, 1*time.Second, reqCh, 1, 1)
+	return sender.NewSender(cl, l, kr, 1.0, 5*time.Second, 1*time.Second, reqCh)
 }
 
 func TestSenderWithSuccess(t *testing.T) {
@@ -65,7 +65,7 @@ func TestSenderWithSuccess(t *testing.T) {
 	mockClient.EXPECT().GetTx("abc").Return(&mockResult, nil).Times(1)
 
 	mockLogger := mocklogging.NewLogger()
-	mockTask := sender.NewTask(1, types.MsgRequestData{})
+	mockTask := sender.NewTask(1, &types.MsgRequestData{})
 
 	// Create channels
 	requestQueueCh := make(chan sender.Task, 1)
@@ -84,7 +84,7 @@ func TestSenderWithSuccess(t *testing.T) {
 	timeout := time.After(10 * time.Second)
 	for {
 		select {
-		case <-s.SuccessRequestsCh():
+		case <-s.SuccessfulRequestsCh():
 			return
 		case <-s.FailedRequestsCh():
 			t.Errorf("expected a successful response")
@@ -120,7 +120,7 @@ func TestSenderWithFailure(t *testing.T) {
 	mockClient.EXPECT().SendRequest(gomock.Any(), 1.0, gomock.Any()).Return(&mockResult, nil).Times(1)
 
 	mockLogger := mocklogging.NewLogger()
-	mockTask := sender.NewTask(1, types.MsgRequestData{})
+	mockTask := sender.NewTask(1, &types.MsgRequestData{})
 
 	// Create channels
 	requestQueueCh := make(chan sender.Task, 1)
@@ -139,7 +139,7 @@ func TestSenderWithFailure(t *testing.T) {
 	timeout := time.After(10 * time.Second)
 	for {
 		select {
-		case <-s.SuccessRequestsCh():
+		case <-s.SuccessfulRequestsCh():
 			t.Errorf("expected a failed response")
 		case <-s.FailedRequestsCh():
 			return
@@ -160,7 +160,7 @@ func TestSenderWithClientError(t *testing.T) {
 	mockClient.EXPECT().SendRequest(gomock.Any(), 1.0, gomock.Any()).Return(nil, fmt.Errorf("error")).Times(1)
 
 	mockLogger := mocklogging.NewLogger()
-	mockTask := sender.NewTask(1, types.MsgRequestData{})
+	mockTask := sender.NewTask(1, &types.MsgRequestData{})
 
 	// Create channels
 	requestQueueCh := make(chan sender.Task, 1)
@@ -179,7 +179,7 @@ func TestSenderWithClientError(t *testing.T) {
 	timeout := time.After(10 * time.Second)
 	for {
 		select {
-		case <-s.SuccessRequestsCh():
+		case <-s.SuccessfulRequestsCh():
 			t.Errorf("expected a failed response")
 		case <-s.FailedRequestsCh():
 			return

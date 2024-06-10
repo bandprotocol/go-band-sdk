@@ -3,11 +3,13 @@ package client
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	band "github.com/bandprotocol/chain/v2/app"
+	proofservice "github.com/bandprotocol/chain/v2/client/grpc/oracle/proof"
+	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
+	tsstypes "github.com/bandprotocol/chain/v2/x/tss/types"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	libclient "github.com/cometbft/cometbft/rpc/jsonrpc/client"
 	"github.com/cosmos/cosmos-sdk/client"
@@ -18,6 +20,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	authtx "github.com/cosmos/cosmos-sdk/x/auth/tx"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	"github.com/pkg/errors"
 )
 
 func NewClientCtx(chainID string) client.Context {
@@ -34,18 +37,13 @@ func NewClientCtx(chainID string) client.Context {
 		WithViper("requester")
 }
 
-func newRPCClient(addr, timeout string) (*rpchttp.HTTP, error) {
-	to, err := time.ParseDuration(timeout)
-	if err != nil {
-		return nil, err
-	}
-
+func newRPCClient(addr string, timeout time.Duration) (*rpchttp.HTTP, error) {
 	httpClient, err := libclient.DefaultHTTPClient(addr)
 	if err != nil {
 		return nil, err
 	}
 
-	httpClient.Timeout = to
+	httpClient.Timeout = timeout
 	rpcClient, err := rpchttp.NewWithClient(addr, "/websocket", httpClient)
 	if err != nil {
 		return nil, err
@@ -58,7 +56,7 @@ func createTxFactory(chainID, gasPrice string, keyring keyring.Keyring) tx.Facto
 	return tx.Factory{}.
 		WithChainID(chainID).
 		WithTxConfig(band.MakeEncodingConfig().TxConfig).
-		WithGasAdjustment(1.1).
+		WithGasAdjustment(1.2).
 		WithGasPrices(gasPrice).
 		WithKeybase(keyring).
 		WithSignMode(signing.SignMode_SIGN_MODE_DIRECT)
@@ -77,21 +75,56 @@ func getRequest(clientCtx client.Context, id uint64) (*oracletypes.QueryRequestR
 	return queryClient.Request(context.Background(), &oracletypes.QueryRequestRequest{RequestId: id})
 }
 
+func getSigning(clientCtx client.Context, signingID uint64) (*bandtsstypes.QuerySigningResponse, error) {
+	queryClient := bandtsstypes.NewQueryClient(clientCtx)
+	return queryClient.Signing(context.Background(), &bandtsstypes.QuerySigningRequest{SigningId: signingID})
+}
+
 func estimateGas(clientCtx client.Context, txf tx.Factory, msgs ...sdk.Msg) (uint64, error) {
 	_, gas, err := tx.CalculateGas(clientCtx, txf, msgs...)
 	return gas, err
 }
 
-func GetRequestID(events []sdk.StringEvent) (uint64, error) {
-	for _, event := range events {
-		if event.Type == oracletypes.EventTypeRequest {
-			rid, err := strconv.ParseUint(event.Attributes[0].Value, 10, 64)
-			if err != nil {
-				return 0, err
-			}
-
-			return rid, nil
-		}
+func convertSigningResultToSigningInfo(res *tsstypes.SigningResult) SigningInfo {
+	if res == nil {
+		return SigningInfo{}
 	}
-	return 0, fmt.Errorf("cannot find request id")
+
+	evmSig := tsstypes.EVMSignature{}
+	if res.EVMSignature != nil {
+		evmSig = *res.EVMSignature
+	}
+
+	return SigningInfo{
+		SigningID:    res.Signing.ID,
+		Message:      res.Signing.Message,
+		PubKey:       res.Signing.GroupPubKey,
+		PubNonce:     res.Signing.GroupPubNonce,
+		Status:       res.Signing.Status,
+		EVMSignature: evmSig,
+	}
+}
+
+func getRequestProof(clientCtx client.Context, reqID uint64) ([]byte, error) {
+	queryClient := proofservice.NewProofServer(clientCtx)
+	resp, err := queryClient.Proof(
+		context.Background(), &proofservice.QueryProofRequest{RequestId: reqID, Height: 0},
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get proof")
+	}
+
+	b, err := clientCtx.Client.Block(context.Background(), nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get current block")
+	}
+	if resp.Height >= b.Block.Height {
+		return nil, fmt.Errorf(
+			"proof is not ready; current height: %d, proof height: %d",
+			b.Block.Height,
+			resp.Height,
+		)
+	}
+
+	return resp.Result.EvmProofBytes, nil
 }

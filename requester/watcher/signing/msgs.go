@@ -1,7 +1,7 @@
-package request
+package signing
 
 import (
-	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
@@ -14,15 +14,15 @@ var (
 )
 
 type Task struct {
-	id        uint64 // ID to identify request with response later
-	RequestID uint64
-	Msg       oracletypes.MsgRequestData
+	id        uint64
+	SigningID uint64
+	Msg       sdk.Msg
 }
 
-func NewTask(id, requestID uint64, msg oracletypes.MsgRequestData) Task {
+func NewTask(id, signingID uint64, msg sdk.Msg) Task {
 	return Task{
 		id:        id,
-		RequestID: requestID,
+		SigningID: signingID,
 		Msg:       msg,
 	}
 }
@@ -33,12 +33,12 @@ func (t Task) ID() uint64 {
 
 type SuccessResponse struct {
 	Task
-	client.OracleResult
+	client.SigningResult
 }
 
 type FailResponse struct {
 	Task
-	client.OracleResult
+	client.SigningResult
 	Err types.Error
 }
 

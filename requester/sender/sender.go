@@ -1,9 +1,11 @@
 package sender
 
 import (
-	"encoding/json"
+	"strings"
 	"time"
 
+	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
+	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 
@@ -25,7 +27,7 @@ type Sender struct {
 	// Channel
 	requestQueueCh       chan Task
 	successfulRequestsCh chan SuccessResponse
-	failedRequestCh      chan FailResponse
+	failedRequestsCh     chan FailResponse
 }
 
 func NewSender(
@@ -36,8 +38,6 @@ func NewSender(
 	timeout time.Duration,
 	pollingDelay time.Duration,
 	requestQueueCh chan Task,
-	successChBufferSize int,
-	failureChBufferSize int,
 ) (*Sender, error) {
 	infos, err := kr.List()
 	if err != nil {
@@ -57,27 +57,25 @@ func NewSender(
 		timeout:              timeout,
 		pollingDelay:         pollingDelay,
 		requestQueueCh:       requestQueueCh,
-		successfulRequestsCh: make(chan SuccessResponse, successChBufferSize),
-		failedRequestCh:      make(chan FailResponse, failureChBufferSize),
+		successfulRequestsCh: make(chan SuccessResponse, cap(requestQueueCh)),
+		failedRequestsCh:     make(chan FailResponse, cap(requestQueueCh)),
 	}, nil
 }
 
-func (s *Sender) SuccessRequestsCh() <-chan SuccessResponse {
+func (s *Sender) SuccessfulRequestsCh() <-chan SuccessResponse {
 	return s.successfulRequestsCh
 }
 
 func (s *Sender) FailedRequestsCh() <-chan FailResponse {
-	return s.failedRequestCh
+	return s.failedRequestsCh
 }
 
 func (s *Sender) Start() {
 	for {
 		req := <-s.requestQueueCh
 		key := <-s.freeKeys
-		// Assume all tasks can be marshalled
-		b, _ := json.Marshal(req.Msg)
 
-		s.logger.Info("Sender", "querying request with ID(%d) with payload: %s", req.ID(), string(b))
+		s.logger.Debug("Sender", "sending request with ID(%d) with payload: %s", req.ID(), req.Msg.String())
 
 		go s.request(req, key)
 	}
@@ -94,27 +92,47 @@ func (s *Sender) request(task Task, key keyring.Record) {
 		s.logger.Error("Sender", "failed to get address from key: %s", err.Error())
 		return
 	}
-	task.Msg.Sender = addr.String()
+
+	// Mutate the msg's sender to the actual sender
+	switch msg := task.Msg.(type) {
+	case *oracletypes.MsgRequestData:
+		msg.Sender = addr.String()
+		task.Msg = msg
+	case *bandtsstypes.MsgRequestSignature:
+		msg.Sender = addr.String()
+		task.Msg = msg
+	default:
+		s.logger.Error("Sender", "unsupported message type: %T", task.Msg)
+		return
+	}
 
 	// Attempt to send the request
-	resp, err := s.client.SendRequest(&task.Msg, s.gasPrice, key)
+	resp, err := s.client.SendRequest(task.Msg, s.gasPrice, key)
 	// Handle error
 	if err != nil {
-		s.logger.Error("Sender", "failed to broadcast request ID(%d) with error: %s", task.ID(), err.Error())
-		s.failedRequestCh <- FailResponse{task, sdk.TxResponse{}, types.ErrBroadcastFailed.Wrapf(err.Error())}
+		s.logger.Error("Sender", "failed to broadcast task ID(%d) with error: %s", task.ID(), err.Error())
+		if strings.Contains(err.Error(), "out-of-gas while executing the wasm script: bad wasm execution") {
+			s.failedRequestsCh <- FailResponse{
+				task, sdk.TxResponse{}, types.ErrOutOfPrepareGas.Wrapf(err.Error()),
+			}
+		} else {
+			s.failedRequestsCh <- FailResponse{
+				task, sdk.TxResponse{}, types.ErrBroadcastFailed.Wrapf(err.Error()),
+			}
+		}
 		return
 	} else if resp != nil && resp.Code != 0 {
-		s.logger.Error("Sender", "failed to broadcast request ID(%d) with code %d", task.ID(), resp.Code)
-		s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed}
+		s.logger.Error("Sender", "failed to broadcast task ID(%d) with code %d", task.ID(), resp.Code)
+		s.failedRequestsCh <- FailResponse{task, *resp, types.ErrBroadcastFailed}
 		return
 	} else if resp == nil {
-		s.logger.Error("Sender", "failed to broadcast request ID(%d) no response", task.ID())
-		s.failedRequestCh <- FailResponse{task, sdk.TxResponse{}, types.ErrUnknown}
+		s.logger.Error("Sender", "failed to broadcast task ID(%d) no response", task.ID())
+		s.failedRequestsCh <- FailResponse{task, sdk.TxResponse{}, types.ErrUnknown}
 		return
 	}
 
 	txHash := resp.TxHash
-	s.logger.Info("Sender", "successfully broadcasted request ID(%d) with tx_hash: %s", task.ID(), txHash)
+	s.logger.Debug("Sender", "successfully broadcasted task ID(%d) with tx_hash: %s", task.ID(), txHash)
 
 	// Poll for tx confirmation
 	et := time.Now().Add(s.timeout)
@@ -126,15 +144,15 @@ func (s *Sender) request(task Task, key keyring.Record) {
 		}
 
 		if resp.Code != 0 {
-			s.logger.Warning("Sender", "request ID(%d) failed with code %d", task.ID(), resp.Code)
-			s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf(resp.RawLog)}
+			s.logger.Warning("Sender", "task ID(%d) failed with code %d", task.ID(), resp.Code)
+			s.failedRequestsCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf(resp.RawLog)}
 			return
 		}
 
-		s.logger.Info("Sender", "request ID(%d) has been confirmed", task.ID())
+		s.logger.Debug("Sender", "task ID(%d) has been confirmed", task.ID())
 		s.successfulRequestsCh <- SuccessResponse{task, *resp}
 		return
 	}
-	s.logger.Error("Sender", "request ID(%d) has timed out", task.ID())
-	s.failedRequestCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf("timed out")}
+	s.logger.Error("Sender", "task ID(%d) has timed out", task.ID())
+	s.failedRequestsCh <- FailResponse{task, *resp, types.ErrBroadcastFailed.Wrapf("timed out")}
 }

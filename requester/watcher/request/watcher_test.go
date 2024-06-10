@@ -9,7 +9,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"go.uber.org/mock/gomock"
 
-	client "github.com/bandprotocol/go-band-sdk/client/mock"
+	"github.com/bandprotocol/go-band-sdk/client"
+	mockclient "github.com/bandprotocol/go-band-sdk/client/mock"
 	"github.com/bandprotocol/go-band-sdk/requester/watcher/request"
 	logging "github.com/bandprotocol/go-band-sdk/utils/logging/mock"
 )
@@ -17,27 +18,30 @@ import (
 func TestWatcher(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	res := oracletypes.Result{
-		ClientID:       "",
-		OracleScriptID: 0,
-		Calldata:       nil,
-		AskCount:       0,
-		MinCount:       0,
-		RequestID:      0,
-		AnsCount:       0,
-		RequestTime:    0,
-		ResolveTime:    0,
-		ResolveStatus:  1,
-		Result:         nil,
+	res := client.OracleResult{
+		Result: &oracletypes.Result{
+			ClientID:       "",
+			OracleScriptID: 0,
+			Calldata:       nil,
+			AskCount:       0,
+			MinCount:       0,
+			RequestID:      0,
+			AnsCount:       0,
+			RequestTime:    0,
+			ResolveTime:    0,
+			ResolveStatus:  1,
+			Result:         nil,
+		},
+		SigningID: 0,
 	}
-	mockClient := client.NewMockClient(ctrl)
+	mockClient := mockclient.NewMockClient(ctrl)
 	mockClient.EXPECT().GetResult(gomock.Any()).Return(&res, nil).Times(1)
 
 	mockLogger := logging.NewLogger()
 
 	watcherCh := make(chan request.Task, 100)
 
-	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
+	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 	go w.Start()
 
 	task := request.Task{
@@ -60,9 +64,9 @@ func TestWatcher(t *testing.T) {
 
 	for {
 		select {
-		case <-w.SuccessfulRequestCh():
+		case <-w.SuccessfulRequestsCh():
 			return
-		case <-w.FailedRequestCh():
+		case <-w.FailedRequestsCh():
 			t.Errorf("expected success, not failure")
 			return
 		case <-timeout:
@@ -77,28 +81,32 @@ func TestWatcher(t *testing.T) {
 func TestWatcherWithResolveFailure(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	res := oracletypes.Result{
-		ClientID:       "",
-		OracleScriptID: 1,
-		Calldata:       nil,
-		AskCount:       10,
-		MinCount:       16,
-		RequestID:      1,
-		AnsCount:       16,
-		RequestTime:    1,
-		ResolveTime:    2,
-		ResolveStatus:  2,
-		Result:         nil,
+	res := client.OracleResult{
+		Result: &oracletypes.Result{
+			ClientID:       "",
+			OracleScriptID: 1,
+			Calldata:       nil,
+			AskCount:       10,
+			MinCount:       16,
+			RequestID:      1,
+			AnsCount:       16,
+			RequestTime:    1,
+			ResolveTime:    2,
+			ResolveStatus:  2,
+			Result:         nil,
+		},
+		SigningID: 0,
 	}
 
-	mockClient := client.NewMockClient(ctrl)
+	mockClient := mockclient.NewMockClient(ctrl)
 	mockClient.EXPECT().GetResult(gomock.Any()).Return(&res, nil).Times(1)
+	mockClient.EXPECT().QueryRequestFailureReason(gomock.Any()).Return("unknown", nil).Times(1)
 
 	mockLogger := logging.NewLogger()
 
 	watcherCh := make(chan request.Task, 100)
 
-	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
+	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 	go w.Start()
 
 	msg := oracletypes.MsgRequestData{
@@ -119,10 +127,10 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 
 	for {
 		select {
-		case <-w.SuccessfulRequestCh():
+		case <-w.SuccessfulRequestsCh():
 			t.Errorf("expected failure, not success")
 			return
-		case <-w.FailedRequestCh():
+		case <-w.FailedRequestsCh():
 			return
 		case <-timeout:
 			t.Errorf("timed out")
@@ -136,14 +144,14 @@ func TestWatcherWithResolveFailure(t *testing.T) {
 func TestWatcherWithTimeout(t *testing.T) {
 	ctrl := gomock.NewController(t)
 
-	mockClient := client.NewMockClient(ctrl)
+	mockClient := mockclient.NewMockClient(ctrl)
 	mockClient.EXPECT().GetResult(gomock.Any()).Return(nil, fmt.Errorf("error")).AnyTimes()
 
 	mockLogger := logging.NewLogger()
 
 	watcherCh := make(chan request.Task, 100)
 
-	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh, 100, 100)
+	w := request.NewWatcher(mockClient, mockLogger, 5*time.Second, 1*time.Second, watcherCh)
 	go w.Start()
 
 	msg := oracletypes.MsgRequestData{
@@ -164,10 +172,10 @@ func TestWatcherWithTimeout(t *testing.T) {
 
 	for {
 		select {
-		case <-w.SuccessfulRequestCh():
+		case <-w.SuccessfulRequestsCh():
 			t.Errorf("expected failure due to timeout")
 			return
-		case <-w.FailedRequestCh():
+		case <-w.FailedRequestsCh():
 			return
 		case <-timeout:
 			t.Errorf("timed out")

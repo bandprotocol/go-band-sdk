@@ -1,10 +1,10 @@
-package request
+package signing
 
 import (
 	"encoding/json"
 	"time"
 
-	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
+	tsstypes "github.com/bandprotocol/chain/v2/x/tss/types"
 
 	"github.com/bandprotocol/go-band-sdk/client"
 	"github.com/bandprotocol/go-band-sdk/requester/types"
@@ -57,66 +57,49 @@ func (w *Watcher) Start() {
 }
 
 func (w *Watcher) watch(task Task) {
+	if task.SigningID == 0 {
+		w.failedRequestsCh <- FailResponse{
+			task,
+			client.SigningResult{},
+			types.ErrUnknown.Wrapf("signing ID %d is invalid", task.SigningID),
+		}
+		return
+	}
+
 	et := time.Now().Add(w.timeout)
 
 	for time.Now().Before(et) {
-		res, err := w.client.GetResult(task.RequestID)
+		res, err := w.client.GetSignature(task.SigningID)
 		if err != nil {
 			time.Sleep(w.pollingDelay)
 			continue
 		}
 
-		switch res.Result.GetResolveStatus() {
-		case oracletypes.RESOLVE_STATUS_OPEN:
-			// if request ID found, poll till results gotten or timeout
+		isWaiting := res.CurrentGroup.Status == tsstypes.SIGNING_STATUS_WAITING ||
+			res.ReplacingGroup.Status == tsstypes.SIGNING_STATUS_WAITING
+
+		done := res.CurrentGroup.Status == tsstypes.SIGNING_STATUS_SUCCESS &&
+			(res.ReplacingGroup.Status == tsstypes.SIGNING_STATUS_SUCCESS ||
+				res.ReplacingGroup.Status == tsstypes.SIGNING_STATUS_UNSPECIFIED)
+
+		switch {
+		case isWaiting:
 			time.Sleep(w.pollingDelay)
-		case oracletypes.RESOLVE_STATUS_SUCCESS:
+		case done:
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
-			w.logger.Debug("Request watcher", "task ID(%d) has been resolved with result: %s", task.ID(), string(b))
+			w.logger.Debug("Signing watcher", "task ID(%d) has been resolved with result: %s", task.ID(), string(b))
 			w.successfulRequestsCh <- SuccessResponse{task, *res}
 			return
-		case oracletypes.RESOLVE_STATUS_FAILURE:
+		default:
 			// Assume all results can be marshalled
 			b, _ := json.Marshal(res)
-			w.logger.Error("Request watcher", "task ID(%d) has failed with result: %s", task.ID(), string(b))
-			var wrappedErr types.Error
-
-			reason, err := w.client.QueryRequestFailureReason(task.RequestID)
-			if err != nil {
-				w.logger.Error(
-					"Request watcher", "task ID(%d) failed. Can't get reason: %s", task.ID(), err,
-				)
-			}
-
-			w.logger.Error(
-				"Request watcher", "task ID(%d) failed. with reason: %s", task.ID(), reason,
-			)
-			if reason == "out-of-gas while executing the wasm script" {
-				wrappedErr = types.ErrOutOfExecuteGas.Wrapf(
-					"request ID %d failed with reason: %s", task.RequestID, reason,
-				)
-			} else {
-				wrappedErr = types.ErrUnknown.Wrapf(
-					"request ID %d failed with unknown reason: %s", task.RequestID, err,
-				)
-			}
-
-			w.failedRequestsCh <- FailResponse{task, *res, wrappedErr}
-			return
-		case oracletypes.RESOLVE_STATUS_EXPIRED:
-			// Assume all results can be marshalled
-			b, _ := json.Marshal(res)
-			w.logger.Error("Request watcher", "task ID(%d) has failed with expired result: %s", task.ID(), string(b))
-			wrappedErr := types.ErrRequestExpired.Wrapf(
-				"request ID %d expired", task.RequestID,
-			)
-
+			w.logger.Error("Signing watcher", "task ID(%d) has failed with result: %s", task.ID(), string(b))
+			wrappedErr := types.ErrUnknown.Wrapf("signign ID %d failed with unknown reason: %s", task.SigningID, err)
 			w.failedRequestsCh <- FailResponse{task, *res, wrappedErr}
 			return
 		}
-
 	}
 
-	w.failedRequestsCh <- FailResponse{task, client.OracleResult{}, types.ErrTimedOut}
+	w.failedRequestsCh <- FailResponse{task, client.SigningResult{}, types.ErrTimedOut}
 }

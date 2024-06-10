@@ -2,9 +2,13 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
+	"sync"
+	"time"
 
+	bandtsstypes "github.com/bandprotocol/chain/v2/x/bandtss/types"
 	oracletypes "github.com/bandprotocol/chain/v2/x/oracle/types"
 	rpchttp "github.com/cometbft/cometbft/rpc/client/http"
 	ctypes "github.com/cometbft/cometbft/rpc/core/types"
@@ -22,12 +26,12 @@ var _ Client = &RPC{}
 
 // RPC implements Clients by using multiple RPC nodes
 type RPC struct {
-	ctx       client.Context
-	txFactory tx.Factory
-	nodes     []*rpchttp.HTTP
-	keyring   keyring.Keyring
-
-	logger logging.Logger
+	ctx               client.Context
+	txFactory         tx.Factory
+	nodes             []*rpchttp.HTTP
+	keyring           keyring.Keyring
+	subscriptionInfos *sync.Map
+	logger            logging.Logger
 }
 
 // NewRPC creates new RPC client
@@ -35,7 +39,7 @@ func NewRPC(
 	logger logging.Logger,
 	endpoints []string,
 	chainID string,
-	timeout string,
+	timeout time.Duration,
 	gasPrice string,
 	keyring keyring.Keyring,
 ) (*RPC, error) {
@@ -49,11 +53,12 @@ func NewRPC(
 	}
 
 	return &RPC{
-		ctx:       NewClientCtx(chainID),
-		txFactory: createTxFactory(chainID, gasPrice, keyring),
-		nodes:     nodes,
-		keyring:   keyring,
-		logger:    logger,
+		ctx:               NewClientCtx(chainID),
+		txFactory:         createTxFactory(chainID, gasPrice, keyring),
+		nodes:             nodes,
+		keyring:           keyring,
+		subscriptionInfos: &sync.Map{},
+		logger:            logger,
 	}, nil
 }
 
@@ -93,8 +98,8 @@ func (c RPC) GetAccount(account sdk.AccAddress) (client.Account, error) {
 }
 
 // GetResult find result from multiple clients
-func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
-	resultCh := make(chan *oracletypes.Result, len(c.nodes))
+func (c RPC) GetResult(id uint64) (*OracleResult, error) {
+	resultCh := make(chan *OracleResult, len(c.nodes))
 	failCh := make(chan struct{}, len(c.nodes))
 
 	for _, node := range c.nodes {
@@ -121,7 +126,16 @@ func (c RPC) GetResult(id uint64) (*oracletypes.Result, error) {
 				return
 			}
 
-			resultCh <- res.Result
+			signingID := bandtsstypes.SigningID(0)
+			if res.Signing != nil {
+				signingID = res.Signing.SigningID
+			}
+			oracleResult := OracleResult{
+				Result:    res.Result,
+				SigningID: signingID,
+			}
+
+			resultCh <- &oracleResult
 		}(node)
 	}
 
@@ -253,9 +267,59 @@ func (c RPC) QueryRequestFailureReason(id uint64) (string, error) {
 	return "", fmt.Errorf("no reason found")
 }
 
-func (c RPC) GetSignature(_ uint64) ([]byte, error) {
-	// TODO: Implement when need TSS signature
-	return []byte{}, nil
+func (c RPC) GetSignature(signingID uint64) (*SigningResult, error) {
+	resultCh := make(chan *SigningResult, len(c.nodes))
+	failCh := make(chan struct{}, len(c.nodes))
+
+	for _, node := range c.nodes {
+		go func(node *rpchttp.HTTP) {
+			c.logger.Debug("GetSignature", "Attempting to get signature from %s", node.Remote())
+
+			res, err := getSigning(c.ctx.WithClient(node), signingID)
+			if err != nil {
+				c.logger.Warning(
+					"GetSignature",
+					"Failed to get signature from %s with error %s",
+					node.Remote(), err,
+				)
+				failCh <- struct{}{}
+				return
+			} else if res.CurrentGroupSigningResult == nil {
+				c.logger.Warning(
+					"GetSignature",
+					"Failed to get signature from %s, signing ID: %d, no signing result from current group",
+					node.Remote(), signingID,
+				)
+				failCh <- struct{}{}
+				return
+			}
+
+			signingResult := SigningResult{
+				CurrentGroup:   convertSigningResultToSigningInfo(res.CurrentGroupSigningResult),
+				ReplacingGroup: convertSigningResultToSigningInfo(res.ReplacingGroupSigningResult),
+			}
+			resultCh <- &signingResult
+		}(node)
+	}
+
+	// check if the signature is ready to be used. If every node returns waiting status, return one.
+	// If every node fails to query a result return an error.
+	var res *SigningResult
+	for range c.nodes {
+		select {
+		case res = <-resultCh:
+			if res.IsReady() {
+				return res, nil
+			}
+		case <-failCh:
+		}
+	}
+
+	if res == nil {
+		return nil, fmt.Errorf("failed to get result from all endpoints")
+	}
+
+	return res, nil
 }
 
 func (c RPC) GetBalance(_ sdk.AccAddress) (uint64, error) {
@@ -263,7 +327,7 @@ func (c RPC) GetBalance(_ sdk.AccAddress) (uint64, error) {
 	return 0, nil
 }
 
-func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key keyring.Record) (*sdk.TxResponse, error) {
+func (c RPC) SendRequest(msg sdk.Msg, gasPrice float64, key keyring.Record) (*sdk.TxResponse, error) {
 	// Get account to get nonce of sender first
 	addr, err := key.GetAddress()
 	if err != nil {
@@ -278,7 +342,7 @@ func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key 
 	txf := c.txFactory.WithAccountNumber(acc.GetAccountNumber()).WithSequence(acc.GetSequence())
 	// Estimate gas
 	gasCh := make(chan uint64, len(c.nodes))
-	failCh := make(chan struct{}, len(c.nodes))
+	failCh := make(chan error, len(c.nodes))
 
 	for _, node := range c.nodes {
 		go func(node *rpchttp.HTTP) {
@@ -290,7 +354,7 @@ func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key 
 					"Fail to estimate tx gas from %s with error %s",
 					node.Remote(), err,
 				)
-				failCh <- struct{}{}
+				failCh <- err
 			} else {
 				gasCh <- gas
 			}
@@ -299,20 +363,27 @@ func (c RPC) SendRequest(msg *oracletypes.MsgRequestData, gasPrice float64, key 
 
 	gas := uint64(0)
 
+	var gasErr error
 Gas:
 	for range c.nodes {
 		select {
 		case gas = <-gasCh:
 			// Return the first result that we found
+			gasErr = nil
 			break Gas
-		case <-failCh:
+		case err := <-failCh:
+			// Check if all endpoints return the same error.
+			if gasErr == nil {
+				gasErr = err
+			} else if !errors.Is(gasErr, err) {
+				gasErr = fmt.Errorf("fail to estimate gas")
+			}
 		}
 	}
 
 	// If all endpoint fail to estimate gas return error
-	// TODO: Find a way to extract error to meaningful response that able to handle by caller
-	if gas == 0 {
-		return nil, fmt.Errorf("fail to estimate gas")
+	if gasErr != nil {
+		return nil, gasErr
 	}
 
 	// Build unsigned tx with estimated gas
@@ -367,6 +438,36 @@ Gas:
 	return nil, fmt.Errorf("failed to find transaction from all endpoints")
 }
 
+// GetRequestProofByID fetches and returns the EVM proof for the given request ID from the REST endpoint.
+func (c RPC) GetRequestProofByID(reqID uint64) ([]byte, error) {
+	resultCh := make(chan []byte, len(c.nodes))
+	failCh := make(chan struct{}, len(c.nodes))
+
+	for _, node := range c.nodes {
+		go func(node *rpchttp.HTTP) {
+			evmProofBytes, err := getRequestProof(c.ctx.WithClient(node), reqID)
+			if err != nil {
+				c.logger.Warning("GetRequestProofByID", "can't get proof bytes from %s; %s", node.Remote(), err)
+				failCh <- struct{}{}
+				return
+			}
+
+			resultCh <- evmProofBytes
+		}(node)
+	}
+
+	for range c.nodes {
+		select {
+		case res := <-resultCh:
+			// Return the first tx response that we found
+			return res, nil
+		case <-failCh:
+		}
+	}
+	// If the tx cannot broadcast to all nodes, return an error
+	return nil, fmt.Errorf("failed to find transaction from all endpoints")
+}
+
 func (c RPC) blockSearch(query string, page *int, perPage *int, orderBy string) (*ctypes.ResultBlockSearch, error) {
 	resultCh := make(chan *ctypes.ResultBlockSearch)
 	failCh := make(chan struct{})
@@ -406,4 +507,107 @@ func (c RPC) blockSearch(query string, page *int, perPage *int, orderBy string) 
 	}
 
 	return nil, fmt.Errorf("failed to block search from all endpoints")
+}
+
+// Subscribe subscribes to the given event name and query from multiple clients. If it cannot
+// subscribe to a node within the given timeout, it will drop that node from the result.
+// If no nodes can be subscribed, it will return an error.
+func (c RPC) Subscribe(name, query string) (*SubscriptionInfo, error) {
+	chInfos := make([]ChannelInfo, 0, len(c.nodes))
+	queue := make(chan ChannelInfo, 1)
+	var wg sync.WaitGroup
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// subscribe to all nodes within a given timeout
+	wg.Add(len(c.nodes))
+	for _, node := range c.nodes {
+		go func(node *rpchttp.HTTP) {
+			if !node.IsRunning() {
+				c.logger.Debug("Subscribe", "start the node %s", node.Remote())
+				if err := node.Start(); err != nil {
+					c.logger.Warning("Subscribe", "Failed to start %s with error %s", node.Remote(), err)
+					wg.Done()
+					return
+				}
+			}
+
+			eventCh, err := node.Subscribe(ctx, name, query, 1000)
+			if err != nil {
+				c.logger.Warning("Subscribe", "Failed to subscribe to %s with error %s", node.Remote(), err)
+				wg.Done()
+				return
+			}
+
+			queue <- ChannelInfo{
+				RemoteAddr: node.Remote(),
+				EventCh:    eventCh,
+			}
+		}(node)
+	}
+
+	// add result into the list.
+	go func() {
+		for info := range queue {
+			chInfos = append(chInfos, info)
+			wg.Done()
+		}
+	}()
+
+	wg.Wait()
+	if len(chInfos) == 0 {
+		return nil, fmt.Errorf("failed to subscribe to all endpoints")
+	}
+
+	subInfo := SubscriptionInfo{
+		Name:         name,
+		Query:        query,
+		ChannelInfos: chInfos,
+	}
+
+	c.subscriptionInfos.Store(name, subInfo)
+	return &subInfo, nil
+}
+
+// Unsubscribe unsubscribes from the given event name from multiple clients.
+func (c RPC) Unsubscribe(name string) error {
+	v, found := c.subscriptionInfos.Load(name)
+	if !found {
+		return fmt.Errorf("event is not subscribed; name %s", name)
+	}
+
+	info, ok := v.(SubscriptionInfo)
+	if !ok {
+		return fmt.Errorf("failed to cast to SubscriptionInfo; name %s", name)
+	}
+
+	remoteAddrs := make(map[string]struct{})
+	for _, chInfo := range info.ChannelInfos {
+		remoteAddrs[chInfo.RemoteAddr] = struct{}{}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var wg sync.WaitGroup
+	wg.Add(len(info.ChannelInfos))
+	for _, node := range c.nodes {
+		if _, found := remoteAddrs[node.Remote()]; !found {
+			continue
+		}
+
+		go func(node *rpchttp.HTTP, name, query string) {
+			defer wg.Done()
+			// if failed to unsubscribe, it means that the node object is not running or timeout.
+			// Log and continue the process.
+			if err := node.Unsubscribe(ctx, name, query); err != nil {
+				c.logger.Warning("Unsubscribe", "Failed to unsubscribe from %s with error %s", node.Remote(), err)
+			}
+		}(node, name, info.Query)
+	}
+
+	wg.Wait()
+	c.subscriptionInfos.Delete(name)
+	return nil
 }
