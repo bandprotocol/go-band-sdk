@@ -113,19 +113,20 @@ func requestFeedsSignatureExample(
 		types.FEED_TYPE_DEFAULT,
 	)
 	if err != nil {
-		l.Error("example", "Failed to get feeds signature message: %v", err)
+		l.Error("feeds", "Failed to get feeds signature message: %v", err)
 		return err
 	}
+	l.Info("feeds", "Get feeds signature message %+v", feedsSignatureMsg)
 
 	signatureResult, err := requestBandtssSignature(cl, l, kr, feedsSignatureMsg)
 	if err != nil {
 		return err
 	}
 
-	l.Info("example", "Get feeds signature result successfully")
-	l.Info("example", "Signing of the current group %+v", signatureResult.CurrentGroup.EVMSignature)
+	l.Info("feeds", "Get feeds signature result successfully")
+	l.Info("feeds", "Signing of the current group %+v", signatureResult.CurrentGroup.EVMSignature)
 	if signatureResult.ReplacingGroup.Status == tsstypes.SIGNING_STATUS_SUCCESS {
-		l.Info("example", "Signing of the replacing group %+v", signatureResult.ReplacingGroup.EVMSignature)
+		l.Info("feeds", "Signing of the replacing group %+v", signatureResult.ReplacingGroup.EVMSignature)
 	}
 
 	return nil

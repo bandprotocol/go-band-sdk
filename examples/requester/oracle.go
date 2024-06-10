@@ -152,32 +152,33 @@ func requestOracleExample(
 ) error {
 	requestMsg, err := getOracleMsgRequestData(rc, addr.String())
 	if err != nil {
-		l.Error("example", "Failed to get oracle request message: %v", err)
+		l.Error("oracle", "Failed to get oracle request message: %v", err)
 		return err
 	}
 
 	oracleResult, err := requestOracleData(cl, l, kr, requestMsg)
 	if err != nil {
-		l.Error("example", "Failed to request oracle data: %v", err)
+		l.Error("oracle", "Failed to request oracle data: %v", err)
 		return err
 	}
+	l.Info("oracle", "Get Oracle Result %+v", oracleResult)
 
 	signingID := oracleResult.SigningID
 	if signingID == 0 {
-		l.Info("example", "No tss signing is requested")
+		l.Info("oracle", "No tss signing is requested")
 		return nil
 	}
 
 	signingResult, err := getSigningResult(cl, l, uint64(signingID), &requestMsg)
 	if err != nil {
-		l.Error("example", "Failed to get signing result: %v", err)
+		l.Error("oracle", "Failed to get signing result: %v", err)
 		return err
 	}
 
-	l.Info("example", "Get Signing result successfully")
-	l.Info("example", "Signing of the current group %+v", signingResult.CurrentGroup.EVMSignature)
+	l.Info("oracle", "Get Signing result successfully")
+	l.Info("oracle", "Signing of the current group %+v", signingResult.CurrentGroup.EVMSignature)
 	if signingResult.ReplacingGroup.Status == tsstypes.SIGNING_STATUS_SUCCESS {
-		l.Info("example", "Signing of the replacing group %+v", signingResult.ReplacingGroup.EVMSignature)
+		l.Info("oracle", "Signing of the replacing group %+v", signingResult.ReplacingGroup.EVMSignature)
 	}
 
 	return nil

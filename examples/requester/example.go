@@ -58,6 +58,7 @@ func main() {
 	}
 
 	l.Info("example", "=============================================")
+	l.Info("example", "Start request oracle data")
 
 	// example for requesting oracle data
 	err = requestOracleExample(l, config.Request, cl, kr, addr)
